@@ -30,6 +30,9 @@ export class Employee {
   // EMAIL
   @Column({ name: 'Email', unique: true, length: 50, type: 'varchar' })
   email: string;
+  // Password
+  @Column({ name: 'Password', length: 50, type: 'varchar' })
+  password: string;
 
   // ORDERS
   @OneToMany(() => Order, (o) => o.customer)

@@ -45,11 +45,11 @@ router.post('/', async (req: Request, res: Response, next: any) => {
     // const { name, description } = req.body;
     // category.name = name;
     // category.description = description;
-    
+
     category = {
       ...category,
       ...req.body,
-    }
+    };
     // Object.assign(category, req.body);
 
     // MANUAL VALIDATION
