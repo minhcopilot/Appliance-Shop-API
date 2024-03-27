@@ -1,15 +1,13 @@
 const JwtStrategy = require('passport-jwt').Strategy;
 const ExtractJwt = require('passport-jwt').ExtractJwt;
 const LocalStrategy = require('passport-local').Strategy;
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-import { VerifyCallback } from 'passport-google-oauth20';
 
 const jwtSettings = require('../constants/jwtSettings');
-import { Customer } from '../entities/customer.entity';
+import { Employee } from '../entities/employee.entity';
 import { AppDataSource } from '../data-source';
-const repository = AppDataSource.getRepository(Customer);
+const repository = AppDataSource.getRepository(Employee);
 
-const passportVerifyToken = new JwtStrategy(
+const passportConfigAdmin = new JwtStrategy(
   {
     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken('Authorization'),
     secretOrKey: jwtSettings.SECRET,
@@ -27,7 +25,7 @@ const passportVerifyToken = new JwtStrategy(
   },
 );
 
-const passportVerifyAccount = new LocalStrategy(
+const passportConfigLocalAdmin = new LocalStrategy(
   {
     usernameField: 'email',
   },
@@ -57,6 +55,6 @@ const passportVerifyAccount = new LocalStrategy(
 );
 
 module.exports = {
-  passportVerifyToken,
-  passportVerifyAccount,
+  passportConfigAdmin,
+  passportConfigLocalAdmin,
 };

@@ -8,7 +8,7 @@ const generateToken = (payload: any) => {
   return JWT.sign(
     {
       iat: Math.floor(Date.now() / 1000),
-      email: payload.email,
+      ...payload,
       algorithm,
     },
     jwtSettings.SECRET,
@@ -23,7 +23,7 @@ const generateRefreshToken = (payload: any) => {
 
   return JWT.sign(
     {
-      email: payload.email,
+      id: payload,
     },
     jwtSettings.SECRET,
     {

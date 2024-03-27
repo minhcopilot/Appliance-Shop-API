@@ -31,7 +31,7 @@ router.get('/', async (req: Request, res: Response, next: any) => {
 /* GET product by id */
 router.get('/:id', async (req: Request, res: Response, next: any) => {
   try {
-  // SELECT * form products where
+    // SELECT * form products where
     const product = await repository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category')
