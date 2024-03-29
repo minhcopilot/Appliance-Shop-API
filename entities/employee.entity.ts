@@ -1,6 +1,7 @@
 import { Entity, Column, OneToMany, PrimaryGeneratedColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
 import { Order } from './order.entity';
 import * as bcrypt from 'bcrypt';
+import { Chat } from './chat.entity';
 
 @Entity({ name: 'Employees' })
 export class Employee {
@@ -39,6 +40,11 @@ export class Employee {
   // ORDERS
   @OneToMany(() => Order, (o) => o.customer)
   orders: Order[];
+
+  //CHATS
+  @OneToMany(() => Chat, (c) => c.employee)
+  chat: Chat[];
+
   @BeforeInsert()
   @BeforeUpdate()
   async hashPassword() {

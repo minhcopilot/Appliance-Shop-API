@@ -1,6 +1,7 @@
 import { Entity, Column, OneToMany, PrimaryGeneratedColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
 import { Order } from './order.entity';
 import * as bcrypt from 'bcrypt';
+import { Chat } from './chat.entity';
 
 @Entity({ name: 'Customers' })
 export class Customer {
@@ -40,6 +41,10 @@ export class Customer {
   // ORDERS
   @OneToMany(() => Order, (o) => o.customer)
   orders: Order[];
+
+  //CHATS
+  @OneToMany(() => Chat, (c) => c.customer)
+  chat: Chat[];
 
   @BeforeInsert()
   @BeforeUpdate()
