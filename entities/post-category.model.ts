@@ -1,17 +1,20 @@
 import { ObjectId } from 'mongodb';
-import { Schema, model } from 'mongoose';
+import mongoose, { Schema, model } from 'mongoose';
+import mongooseLeanVirtuals from 'mongoose-lean-virtuals';
 import * as yup from 'yup';
 
-const postCategorySchema = yup.object().shape({
-  name: yup.string().required().max(100),
+export const postCategorySchema = yup.object().shape({
+  title: yup.string().required().max(100),
   description: yup.string().max(500),
   parentId: yup
     .string()
     .nullable()
-    .test('Validate ObjectId', '$path is not a valid ObjectId', async (value: any) => {
+    .test('Validate ObjectId', 'parentId is not a valid ObjectId', async (value?: any) => {
+      if (!value) return true;
       return ObjectId.isValid(value);
     }),
-  coverImageUrl: yup.string().max(500),
+  url: yup.string().max(500),
+  imageUrl: yup.string().max(500),
   isDeleted: yup.boolean().default(false),
   createdBy: yup.string().required().max(100),
   updatedBy: yup.string().max(100),
@@ -23,7 +26,7 @@ interface PostCategory extends Omit<yup.InferType<typeof postCategorySchema>, 'p
 
 const postCategoryDbSchema = new Schema<PostCategory>(
   {
-    name: {
+    title: {
       type: String,
       required: true,
       unique: true,
@@ -37,7 +40,11 @@ const postCategoryDbSchema = new Schema<PostCategory>(
       type: Schema.Types.ObjectId,
       ref: 'PostCategory',
     },
-    coverImageUrl: {
+    url: {
+      type: String,
+      maxLength: 500,
+    },
+    imageUrl: {
       type: String,
       maxLength: 500,
     },
@@ -57,4 +64,13 @@ const postCategoryDbSchema = new Schema<PostCategory>(
   },
   { versionKey: false, timestamps: true },
 );
+postCategoryDbSchema.virtual('postCount', {
+  ref: 'Post',
+  localField: '_id',
+  foreignField: 'postCategoryId',
+  count: true,
+});
+postCategoryDbSchema.plugin(mongooseLeanVirtuals);
+postCategoryDbSchema.set('toObject', { virtuals: true });
+postCategoryDbSchema.set('toJSON', { virtuals: true });
 export const PostCategory = model('PostCategory', postCategoryDbSchema);

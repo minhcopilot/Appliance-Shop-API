@@ -43,7 +43,7 @@ export class Employee {
 
   //CHATS
   @OneToMany(() => Chat, (c) => c.employee)
-  chat: Chat[];
+  chats: Chat[];
 
   @BeforeInsert()
   @BeforeUpdate()

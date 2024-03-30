@@ -36,7 +36,8 @@ export class Product {
   // ----------------------------------------------------------------------------------------------
   // DESCRIPTION
   // ----------------------------------------------------------------------------------------------
-  @Column({ name: 'Description', type: 'nvarchar', length: 'MAX', nullable: true })
+  // @Column({ name: 'Description', type: 'nvarchar', length: 'MAX', nullable: true })
+  @Column({ name: 'Description', type: 'nvarchar', nullable: true })
   description: string;
 
   // ----------------------------------------------------------------------------------------------

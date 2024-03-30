@@ -44,7 +44,7 @@ export class Customer {
 
   //CHATS
   @OneToMany(() => Chat, (c) => c.customer)
-  chat: Chat[];
+  chats: Chat[];
 
   @BeforeInsert()
   @BeforeUpdate()

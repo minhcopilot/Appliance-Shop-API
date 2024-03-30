@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb';
 import { Schema, model } from 'mongoose';
 import * as yup from 'yup';
 
-const commentSchema = yup.object().shape({
+export const commentSchema = yup.object().shape({
   postId: yup
     .string()
     .required()

@@ -56,7 +56,8 @@ const passportVerifyAccount = new LocalStrategy(
   },
 );
 
-module.exports = {
-  passportVerifyToken,
-  passportVerifyAccount,
-};
+// module.exports = {
+//   passportVerifyToken,
+//   passportVerifyAccount,
+// };
+export { passportVerifyToken, passportVerifyAccount };

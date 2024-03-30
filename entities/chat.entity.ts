@@ -7,21 +7,21 @@ export class Chat {
   @PrimaryGeneratedColumn({ name: 'Id' })
   id: number;
 
-  @Column({ name: 'CustomerId', type: 'int' })
+  @Column({ type: 'int' })
   customerId: number;
 
-  @Column({ name: 'EmployeeId', type: 'int' })
+  @Column({ type: 'int' })
   employeeId: number;
 
   @Column({ name: 'IsFinished', type: 'boolean', default: false })
-  isFinished: boolean;
+  isFinished: number;
 
   @Column({ name: 'LastUpdated', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   lastUpdated: Date;
 
-  @ManyToOne(() => Customer, (customer) => customer.chat)
+  @ManyToOne(() => Customer, (customer) => customer.chats)
   customer: Customer;
 
-  @ManyToOne(() => Employee, (employee) => employee.chat)
+  @ManyToOne(() => Employee, (employee) => employee.chats)
   employee: Employee;
 }

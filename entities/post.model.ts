@@ -1,8 +1,9 @@
 import { ObjectId } from 'mongodb';
 import { Schema, model } from 'mongoose';
+import mongooseLeanVirtuals from 'mongoose-lean-virtuals';
 import * as yup from 'yup';
 
-const postSchema = yup.object().shape({
+export const postSchema = yup.object().shape({
   type: yup.string().required().max(20).oneOf(['post', 'page']).default('post'),
   postCategoryId: yup
     .string()
@@ -14,10 +15,11 @@ const postSchema = yup.object().shape({
   content: yup.string().required(),
   authorId: yup.number().required(),
   authorName: yup.string().required().max(100),
-  url: yup.string().required().max(500),
+  url: yup.string().max(500),
   imageUrl: yup.string().max(500),
-  status: yup.string().required().max(20).oneOf(['draft', 'published', 'deleted']).default('draft'),
-  commentStatus: yup.string().required().max(20).oneOf(['open', 'closed']).default('open'),
+  imagesUrl: yup.array().of(yup.string().max(500)),
+  status: yup.string().max(20).oneOf(['draft', 'published', 'deleted']).default('draft'),
+  commentStatus: yup.string().max(20).oneOf(['open', 'closed']).default('open'),
   Like: yup.number().default(0),
   updateBy: yup.string().max(100),
 });
@@ -68,6 +70,7 @@ const postDbSchema = new Schema<Post>(
       type: String,
       maxLength: 500,
     },
+    imagesUrl: [String(500)],
     status: {
       type: String,
       required: true,
@@ -93,5 +96,14 @@ const postDbSchema = new Schema<Post>(
   },
   { versionKey: false, timestamps: true },
 );
+
+postDbSchema.virtual('comments', {
+  ref: 'Comment',
+  localField: '_id',
+  foreignField: 'postId',
+});
+postDbSchema.plugin(mongooseLeanVirtuals);
+postDbSchema.set('toObject', { virtuals: true });
+postDbSchema.set('toJSON', { virtuals: true });
 
 export const Post = model('Post', postDbSchema);

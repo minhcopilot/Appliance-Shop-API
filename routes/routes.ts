@@ -1,8 +1,8 @@
 import express, { Express } from 'express';
 const router = express.Router();
 const passport = require('passport');
-const { passportVerifyToken, passportVerifyAccount } = require('../../middlewares/passport');
-
+//const { passportVerifyToken, passportVerifyAccount } = require('../../middlewares/passport');
+import { passportVerifyAccount, passportVerifyToken } from '../middlewares/passport';
 import categoriesRouter from './categories';
 import customersRouter from './customers';
 import employeesRouter from './employees';
