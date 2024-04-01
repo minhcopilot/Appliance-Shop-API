@@ -20,7 +20,7 @@ export const postSchema = yup.object().shape({
   imageUrl: yup.string().max(500),
   status: yup.string().max(20).oneOf(['draft', 'published', 'deleted']).default('draft'),
   commentStatus: yup.string().max(20).oneOf(['open', 'closed']).default('open'),
-  Like: yup.number().default(0),
+  like: yup.number().default(0),
   updateBy: yup.string().max(100),
 });
 
@@ -84,7 +84,7 @@ const postDbSchema = new Schema<Post>(
       enum: ['open', 'closed'],
       default: 'open',
     },
-    Like: {
+    like: {
       type: Number,
       default: 0,
     },

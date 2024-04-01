@@ -150,11 +150,14 @@ PostsRouter.post('/:url/comments', async (req: Request, res: Response, next: Nex
   try {
     await validateSchema(commentSchema, req.body);
     try {
-      let postId = (await Post.findOne({ url: req.params.url }).lean())?._id;
-      if (!postId) {
+      let post = await Post.findOne({ url: req.params.url }).lean();
+      if (!post) {
         return res.status(404).json({ message: `Couldn't find that post` });
       }
-      let { status = '', ...newbody } = { ...req.body, postId }; // Omit the status property from the newbody object to prevent user manipulation
+      if (post.commentStatus === 'closed') {
+        return res.status(403).json({ message: `Comment is closed for this post` });
+      }
+      let { status = '', ...newbody } = { ...req.body, postId: post?._id }; // Omit the status property from the newbody object to prevent user manipulation
       const newItem = new Comment(newbody);
       try {
         let result = await newItem.save();
@@ -169,6 +172,23 @@ PostsRouter.post('/:url/comments', async (req: Request, res: Response, next: Nex
     }
   } catch (error: any) {
     return res.status(400).json({ message: error.message });
+  }
+});
+
+//Client post like by url
+PostsRouter.post('/:url/like', async (req: Request, res: Response) => {
+  const url = req.params.url;
+  try {
+    let found = await Post.findOne({ url });
+    if (!found) {
+      return res.status(404).json({ message: `Couldn't find that post` });
+    }
+    found.like += 1;
+    found.save();
+    return res.json({ message: 'Post liked successfully' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Database Error' });
   }
 });
 
