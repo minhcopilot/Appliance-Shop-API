@@ -32,7 +32,4 @@ const generateRefreshToken = (payload: any) => {
   );
 };
 
-module.exports = {
-  generateToken,
-  generateRefreshToken,
-};
+export { generateToken, generateRefreshToken };

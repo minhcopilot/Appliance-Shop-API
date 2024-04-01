@@ -9,6 +9,7 @@ export const postSchema = yup.object().shape({
     .string()
     .nullable()
     .test('Validate ObjectId', '$path is not a valid ObjectId', async (value: any) => {
+      if (!value) return true;
       return ObjectId.isValid(value);
     }),
   title: yup.string().required().max(100),
@@ -17,7 +18,6 @@ export const postSchema = yup.object().shape({
   authorName: yup.string().required().max(100),
   url: yup.string().max(500),
   imageUrl: yup.string().max(500),
-  imagesUrl: yup.array().of(yup.string().max(500)),
   status: yup.string().max(20).oneOf(['draft', 'published', 'deleted']).default('draft'),
   commentStatus: yup.string().max(20).oneOf(['open', 'closed']).default('open'),
   Like: yup.number().default(0),
@@ -70,7 +70,6 @@ const postDbSchema = new Schema<Post>(
       type: String,
       maxLength: 500,
     },
-    imagesUrl: [String(500)],
     status: {
       type: String,
       required: true,
@@ -97,10 +96,11 @@ const postDbSchema = new Schema<Post>(
   { versionKey: false, timestamps: true },
 );
 
-postDbSchema.virtual('comments', {
+postDbSchema.virtual('commentsCount', {
   ref: 'Comment',
   localField: '_id',
   foreignField: 'postId',
+  count: true,
 });
 postDbSchema.plugin(mongooseLeanVirtuals);
 postDbSchema.set('toObject', { virtuals: true });

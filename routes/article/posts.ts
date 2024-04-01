@@ -9,19 +9,73 @@ import { Post, postSchema } from '../../entities/post.model';
 import { Comment, commentSchema } from '../../entities/comment.model';
 export const PostsRouter = express.Router();
 
+// Client get all post
 PostsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.json(await Post.find().lean({ virtuals: true }).populate('comments'));
+    res.json(await Post.find({ status: 'published' }).lean({ virtuals: true }).populate('commentsCount'));
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Database Error' });
   }
 });
 
+// Admin get all posts
+PostsRouter.get('/all', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json(await Post.find().lean({ virtuals: true }).populate('commentsCount'));
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Database Error' });
+  }
+});
+
+//Client post search
+PostsRouter.get('/search/:searchString', async (req: Request, res: Response) => {
+  const searchString = req.params.searchString;
+  let query = {
+    $or: [
+      { title: { $regex: searchString, $options: 'i' } },
+      { content: { $regex: searchString, $options: 'i' } },
+      { authorName: { $regex: searchString, $options: 'i' } },
+      { status: 'published' },
+    ],
+  };
+  try {
+    let found = await Post.find(query);
+    found.length > 0 ? res.json(found) : res.status(410).json({ message: `Couldn't find any post like that` });
+  } catch (error) {
+    res.status(500).json({ message: 'Database Error' });
+  }
+});
+
+//Admin post search
+PostsRouter.get('/search/query', async (req: Request, res: Response) => {
+  let query: { [index: string]: any } = {};
+  for (var queryKey in req.query) {
+    if (queryKey in postSchema.fields)
+      try {
+        await validateSchemaByField(postSchema, req.query, queryKey);
+        query[queryKey] = { $regex: req.query[queryKey], $options: 'i' };
+      } catch (error: any) {
+        return res.status(400).json(error.errors);
+      }
+  }
+  // if (db == "order") {
+  //   query = { ...query, ...(await ordersQuery(req.query)) };
+  // }
+  try {
+    let found = await Post.find(query);
+    found.length > 0 ? res.json(found) : res.status(410).json({ message: `Couldn't find any post like that` });
+  } catch (error) {
+    res.status(500).json({ message: 'Database Error' });
+  }
+});
+
+//Client get post by url
 PostsRouter.get('/:url', async (req: Request, res: Response, next: NextFunction) => {
   const url = req.params.url;
   try {
-    let postData = await Post.findOne({ url }).lean({ virtuals: true }).populate('comments');
+    let postData = await Post.findOne({ url, status: 'published' }).lean({ virtuals: true }).populate('commentsCount');
     postData ? res.json(postData) : res.status(404).json({ message: `Couldn't find that post` });
   } catch (error: any) {
     console.log(error);
@@ -29,16 +83,69 @@ PostsRouter.get('/:url', async (req: Request, res: Response, next: NextFunction)
   }
 });
 
+//Admin get post by url
+PostsRouter.get('/:url', async (req: Request, res: Response, next: NextFunction) => {
+  const url = req.params.url;
+  try {
+    let postData = await Post.findOne({ url }).lean({ virtuals: true }).populate('commentsCount');
+    postData ? res.json(postData) : res.status(404).json({ message: `Couldn't find that post` });
+  } catch (error: any) {
+    console.log(error);
+    res.status(500).json({ message: 'Database Error' });
+  }
+});
+
+//Client get post comments
 PostsRouter.get('/:url/comments', async (req: Request, res: Response, next: NextFunction) => {
   const url = req.params.url;
   try {
-    res.json(await Comment.find().lean({ virtuals: true }));
+    let lookupPost = {
+      $lookup: {
+        from: 'posts',
+        localField: 'postId',
+        foreignField: '_id',
+        pipeline: [
+          {
+            $project: { url: 1 },
+          },
+        ],
+        as: 'posts',
+      },
+    };
+    let found = await Comment.aggregate([lookupPost, { $unwind: '$posts' }, { $match: { 'posts.url': url, status: 'approved' } }]).project({ posts: 0 });
+    res.json(found);
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Database Error' });
   }
 });
 
+//Admin get post comments
+PostsRouter.get('/:url/comments/all', async (req: Request, res: Response, next: NextFunction) => {
+  const url = req.params.url;
+  try {
+    let lookupPost = {
+      $lookup: {
+        from: 'posts',
+        localField: 'postId',
+        foreignField: '_id',
+        pipeline: [
+          {
+            $project: { url: 1 },
+          },
+        ],
+        as: 'posts',
+      },
+    };
+    let found = await Comment.aggregate([lookupPost, { $unwind: '$posts' }, { $match: { 'posts.url': url } }]).project({ posts: 0 });
+    res.json(found);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Database Error' });
+  }
+});
+
+//Client post comment
 PostsRouter.post('/:url/comments', async (req: Request, res: Response, next: NextFunction) => {
   try {
     await validateSchema(commentSchema, req.body);
@@ -47,7 +154,8 @@ PostsRouter.post('/:url/comments', async (req: Request, res: Response, next: Nex
       if (!postId) {
         return res.status(404).json({ message: `Couldn't find that post` });
       }
-      const newItem = new Comment({ ...req.body, postId });
+      let { status = '', ...newbody } = { ...req.body, postId }; // Omit the status property from the newbody object to prevent user manipulation
+      const newItem = new Comment(newbody);
       try {
         let result = await newItem.save();
         return res.status(201).json(result);
@@ -64,6 +172,7 @@ PostsRouter.post('/:url/comments', async (req: Request, res: Response, next: Nex
   }
 });
 
+//Admin check unique
 PostsRouter.post('/check-unique', async (req, res) => {
   const body = req.body;
   let uniqueError = [];
@@ -83,6 +192,7 @@ PostsRouter.post('/check-unique', async (req, res) => {
   return res.json(uniqueError);
 });
 
+// Admin post create
 PostsRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { file, ...body } = req.body;
@@ -114,6 +224,7 @@ PostsRouter.post('/', async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
+//Admin post delete
 PostsRouter.delete('/:url', async (req: Request, res: Response) => {
   const url = req.params.url;
   try {
@@ -124,6 +235,7 @@ PostsRouter.delete('/:url', async (req: Request, res: Response) => {
   }
 });
 
+//Admin post update
 PostsRouter.patch('/:url', async (req, res) => {
   const url = req.params.url;
   const { file, ...body } = req.body;
@@ -146,7 +258,8 @@ PostsRouter.patch('/:url', async (req, res) => {
       return res.status(400).json({ message: 'title must be unique' });
     }
     try {
-      let idData = await Post.findOneAndUpdate({ url }, { ...body, url: urlGenerate(body.title) });
+      body.title && (body.url = urlGenerate(body.title));
+      let idData = await Post.findOneAndUpdate({ url }, body);
       if (idData) {
         if (req.body.file) {
           console.log(req.body.file[0]);
@@ -155,6 +268,7 @@ PostsRouter.patch('/:url', async (req, res) => {
         return res.json({ message: `Post Post updated successfully` });
       } else res.status(404).json({ message: `Couldn't find that Post Post` });
     } catch (error) {
+      console.log(error);
       res.status(500).json({ message: 'Database Error' });
     }
   } catch (error) {
@@ -163,6 +277,7 @@ PostsRouter.patch('/:url', async (req, res) => {
   }
 });
 
+//Admin post upload image
 PostsRouter.post('/:url/upload', async (req, res) => {
   const url = req.params.url;
   try {

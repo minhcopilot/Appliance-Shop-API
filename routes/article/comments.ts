@@ -3,6 +3,30 @@ import { validateSchemaByField } from '../../utils/validateSchema';
 import { Comment, commentSchema } from '../../entities/comment.model';
 export const CommentsRouter = express.Router();
 
+//Admin comment search
+CommentsRouter.get('/search/query', async (req: Request, res: Response) => {
+  let query: { [index: string]: any } = {};
+  for (var queryKey in req.query) {
+    if (queryKey in commentSchema.fields)
+      try {
+        await validateSchemaByField(commentSchema, req.query, queryKey);
+        query[queryKey] = { $regex: req.query[queryKey], $options: 'i' };
+      } catch (error: any) {
+        return res.status(400).json(error.errors);
+      }
+  }
+  // if (db == "order") {
+  //   query = { ...query, ...(await ordersQuery(req.query)) };
+  // }
+  try {
+    let found = await Comment.find(query);
+    found.length > 0 ? res.json(found) : res.status(410).json({ message: `Couldn't find any comment like that` });
+  } catch (error) {
+    res.status(500).json({ message: 'Database Error' });
+  }
+});
+
+//Admin update comment by id
 CommentsRouter.patch('/:id', async (req: Request, res: Response, next: NextFunction) => {
   const id = req.params.id;
   let inputError = [];
@@ -28,6 +52,7 @@ CommentsRouter.patch('/:id', async (req: Request, res: Response, next: NextFunct
   }
 });
 
+//Admin delete comment by id
 CommentsRouter.delete('/:id', async (req: Request, res: Response) => {
   const id = req.params.id;
   try {

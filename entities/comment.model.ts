@@ -3,16 +3,14 @@ import { Schema, model } from 'mongoose';
 import * as yup from 'yup';
 
 export const commentSchema = yup.object().shape({
-  postId: yup
-    .string()
-    .required()
-    .test('Validate ObjectId', '$path is not a valid ObjectId', async (value: any) => {
-      return ObjectId.isValid(value);
-    }),
+  postId: yup.string().test('Validate ObjectId', '$path is not a valid ObjectId', async (value: any) => {
+    if (!value) return true;
+    return ObjectId.isValid(value);
+  }),
   author: yup.string().required().max(100),
   email: yup.string().required().max(100),
   content: yup.string().required(),
-  status: yup.string().required().max(20).oneOf(['approved', 'pending', 'spam']).default('pending'),
+  status: yup.string().max(20).oneOf(['approved', 'pending', 'spam']).default('pending'),
 });
 
 //Use the Omit helper type to exclude the postId property from the commentSchema

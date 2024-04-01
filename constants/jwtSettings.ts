@@ -1,3 +1,5 @@
-module.exports = {
-  SECRET: process.env.SECRET,
+import { Secret } from 'jsonwebtoken';
+
+export default {
+  SECRET: process.env.SECRET as Secret,
 };

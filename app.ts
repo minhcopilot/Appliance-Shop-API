@@ -11,18 +11,24 @@ import userRouter from './routes/user/routes';
 import { articleRouter } from './routes/article/routes';
 import mongoose from 'mongoose';
 
-// const mongooseConnection = 'mongodb+srv://' + process.env.MONGODB_USER + ':' + process.env.MONGODB_PASS + '@' + process.env.MONGODB_URL;
-const mongooseConnection = 'mongodb://' + process.env.MONGODB_USER + ':' + process.env.MONGODB_PASS + '@' + process.env.MONGODB_URL;
-
-mongoose
-  .connect(mongooseConnection)
-  .then(() => {
-    console.log('Connected to ' + mongooseConnection);
-  })
-  .catch((error) => {
-    console.log("Couldn't connect to " + mongooseConnection);
-    console.log(error.message);
-  });
+//MongoDB connection with initial retry
+const mongooseConnection = 'mongodb://' + process.env.MONGODB_URL;
+mongoose.connection.on('connected', () => console.log('Connected to ' + mongooseConnection));
+mongoose.connection.on('disconnected', () => console.log('MongoDB lost connection'));
+mongoose.connection.on('error', (error) => console.error('Error in MongoDb connection: ' + error));
+const MongoDBConnect = () => {
+  mongoose
+    .connect(mongooseConnection, {
+      user: process.env.MONGODB_USER,
+      pass: process.env.MONGODB_PASS,
+      serverSelectionTimeoutMS: 5000,
+    })
+    .catch((err) => {
+      console.log('MongoDB connection unsuccessful, retry after 5 seconds.');
+      setTimeout(MongoDBConnect, 5000);
+    });
+};
+MongoDBConnect();
 
 const app: Express = express();
 

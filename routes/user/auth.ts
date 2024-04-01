@@ -1,13 +1,13 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { Strategy as GoogleStrategy, Profile } from 'passport-google-oauth20';
 import { AppDataSource } from '../../data-source';
-const JWT = require('jsonwebtoken');
+import JWT from 'jsonwebtoken';
 const router = express.Router();
-const jwtSettings = require('../../constants/jwtSettings');
-const { generateToken, generateRefreshToken } = require('../../utils/jwtHelper');
+import jwtSettings from '../../constants/jwtSettings';
+import { generateToken, generateRefreshToken } from '../../utils/jwtHelper';
 import { Customer } from '../../entities/customer.entity';
 const repository = AppDataSource.getRepository(Customer);
-const passport = require('passport');
+import passport from 'passport';
 import * as bcrypt from 'bcrypt';
 import passportGG from '../../middlewares/passportGoogle';
 require('dotenv').config();

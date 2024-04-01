@@ -8,7 +8,18 @@ import { uploadSingle } from '../../utils/upload';
 import multer from 'multer';
 export const PostCategoriesRouter = express.Router();
 
+//Client get all post categories
 PostCategoriesRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json(await PostCategory.find({ isDeleted: false }).lean({ virtuals: true }).populate('postCount'));
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Database Error' });
+  }
+});
+
+//Admin get all post categories
+PostCategoriesRouter.get('/all', async (req: Request, res: Response, next: NextFunction) => {
   try {
     res.json(await PostCategory.find().lean({ virtuals: true }).populate('postCount'));
   } catch (error) {
@@ -17,7 +28,20 @@ PostCategoriesRouter.get('/', async (req: Request, res: Response, next: NextFunc
   }
 });
 
+//Client get post category by url
 PostCategoriesRouter.get('/:url', async (req: Request, res: Response, next: NextFunction) => {
+  const url = req.params.url;
+  try {
+    let categoryData = await PostCategory.findOne({ url, isDeleted: false }).lean({ virtuals: true }).populate('postCount');
+    categoryData ? res.json(categoryData) : res.status(404).json({ message: `Couldn't find that category` });
+  } catch (error: any) {
+    console.log(error);
+    res.status(500).json({ message: 'Database Error' });
+  }
+});
+
+//Admin get post category by url
+PostCategoriesRouter.get('/all/:url', async (req: Request, res: Response, next: NextFunction) => {
   const url = req.params.url;
   try {
     let categoryData = await PostCategory.findOne({ url }).lean({ virtuals: true }).populate('postCount');
@@ -28,6 +52,7 @@ PostCategoriesRouter.get('/:url', async (req: Request, res: Response, next: Next
   }
 });
 
+//Admin check unique, return array of not unique fields
 PostCategoriesRouter.post('/check-unique', async (req, res) => {
   const body = req.body;
   let uniqueError = [];
@@ -47,6 +72,7 @@ PostCategoriesRouter.post('/check-unique', async (req, res) => {
   return res.json(uniqueError);
 });
 
+//Admin create post category
 PostCategoriesRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { file, ...body } = req.body;
@@ -78,6 +104,7 @@ PostCategoriesRouter.post('/', async (req: Request, res: Response, next: NextFun
   }
 });
 
+//Admin delete post category by url
 PostCategoriesRouter.delete('/:url', async (req: Request, res: Response) => {
   const url = req.params.url;
   try {
@@ -88,6 +115,7 @@ PostCategoriesRouter.delete('/:url', async (req: Request, res: Response) => {
   }
 });
 
+//Admin update post category by url
 PostCategoriesRouter.patch('/:url', async (req, res) => {
   const url = req.params.url;
   const { file, ...body } = req.body;
@@ -127,6 +155,7 @@ PostCategoriesRouter.patch('/:url', async (req, res) => {
   }
 });
 
+//Admin upload image to post category by url
 PostCategoriesRouter.post('/:url/upload', async (req, res) => {
   const url = req.params.url;
   try {
