@@ -4,7 +4,7 @@ const LocalStrategy = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 import { VerifyCallback } from 'passport-google-oauth20';
 
-const jwtSettings = require('../constants/jwtSettings');
+// const jwtSettings = require('../constants/jwtSettings');
 import { Customer } from '../entities/customer.entity';
 import { AppDataSource } from '../data-source';
 const repository = AppDataSource.getRepository(Customer);
@@ -12,7 +12,7 @@ const repository = AppDataSource.getRepository(Customer);
 const passportVerifyToken = new JwtStrategy(
   {
     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken('Authorization'),
-    secretOrKey: jwtSettings.SECRET,
+    secretOrKey: process.env.SECRET,
   },
   async (payload: any, done: any) => {
     try {
