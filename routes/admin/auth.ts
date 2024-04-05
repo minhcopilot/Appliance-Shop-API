@@ -1,9 +1,7 @@
 import express, { NextFunction, Request, Response } from 'express';
-import { Strategy as GoogleStrategy, Profile } from 'passport-google-oauth20';
 import { AppDataSource } from '../../data-source';
 const JWT = require('jsonwebtoken');
 const router = express.Router();
-const jwtSettings = require('../../constants/jwtSettings');
 
 const { generateToken, generateRefreshToken } = require('../../utils/jwtHelper');
 
@@ -11,12 +9,10 @@ import { Employee } from '../../entities/employee.entity';
 const repository = AppDataSource.getRepository(Employee);
 const passport = require('passport');
 import * as bcrypt from 'bcrypt';
-import passportGG from '../../middlewares/passportGoogle';
 require('dotenv').config();
 const { passportConfigLocalAdmin } = require('../../middlewares/passportAdmin');
 passport.use('localAdmin', passportConfigLocalAdmin);
 
-// Define a new interface extending Request
 interface AuthenticatedRequest extends Request {
   user?: any; // Define user property
 }
@@ -29,7 +25,7 @@ router.post('/login', passport.authenticate('localAdmin', { session: false }), a
     const user: any = await repository.findOneBy({ email: authenticatedUser.email });
     const refreshToken = generateRefreshToken(user.id);
     return res.status(200).json({ token, refreshToken });
-  } catch (error) {
+  } catch (error: any) {
     return res.status(500).json({ message: 'Internal server error', error: error });
   }
 });
@@ -65,8 +61,8 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
     const user: any = await repository.findOneBy({ email: email });
     const refreshToken = generateRefreshToken(user.id);
     return res.status(200).json({ message: 'Register successfully', Employee: tokenEmployee, token, refreshToken });
-  } catch (error) {
-    return res.status(500).json({ message: 'Internal server error', error: error });
+  } catch (error: any) {
+    return res.status(500).json({ message: 'Internal server error', errors: error });
   }
 });
 //Refresh token
@@ -76,7 +72,7 @@ router.post('/refresh-token', async (req: Request, res: Response, next: NextFunc
     if (!refreshToken) {
       return res.status(400).json({ error: 'Refresh token is required' });
     }
-    JWT.verify(refreshToken, jwtSettings.SECRET, async (err: any, user: any) => {
+    JWT.verify(refreshToken, process.env.SECRET, async (err: any, user: any) => {
       if (err) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
@@ -97,8 +93,8 @@ router.post('/refresh-token', async (req: Request, res: Response, next: NextFunc
       }
       return res.status(401).json({ error: 'Unauthorized' });
     });
-  } catch (error) {
-    return res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    return res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 

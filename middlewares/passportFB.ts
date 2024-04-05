@@ -1,15 +1,17 @@
 import passport from 'passport';
-import { Strategy as GoogleStrategy, Profile } from 'passport-google-oauth20';
+import { Strategy as FacebookStrategy, Profile } from 'passport-facebook';
+
 import { Customer } from '../entities/customer.entity';
 import { AppDataSource } from '../data-source';
 const repository = AppDataSource.getRepository(Customer);
 
 passport.use(
-  new GoogleStrategy(
+  new FacebookStrategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: '/user/auth/google/callback',
+      clientID: process.env.FACEBOOK_APP_ID!,
+      clientSecret: process.env.FACEBOOK_APP_SECRET!,
+      callbackURL: 'http://localhost:9000/user/auth/facebook/callback',
+      profileFields: ['id', 'displayName', 'name', 'photos', 'email'],
     },
     async (accessToken: string, refreshToken: string, profile: Profile, cb: Function) => {
       try {

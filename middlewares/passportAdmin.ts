@@ -2,7 +2,6 @@ const JwtStrategy = require('passport-jwt').Strategy;
 const ExtractJwt = require('passport-jwt').ExtractJwt;
 const LocalStrategy = require('passport-local').Strategy;
 
-const jwtSettings = require('../constants/jwtSettings');
 import { Employee } from '../entities/employee.entity';
 import { AppDataSource } from '../data-source';
 const repository = AppDataSource.getRepository(Employee);
@@ -10,7 +9,7 @@ const repository = AppDataSource.getRepository(Employee);
 const passportConfigAdmin = new JwtStrategy(
   {
     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken('Authorization'),
-    secretOrKey: jwtSettings.SECRET,
+    secretOrKey: process.env.SECRET,
   },
   async (payload: any, done: any) => {
     try {
@@ -47,8 +46,6 @@ const passportConfigLocalAdmin = new LocalStrategy(
       // User authenticated successfully
       return done(null, userWithoutPassword);
     } catch (error) {
-      // Handle errors appropriately
-      console.error('Error during authentication:', error);
       return done(error, false);
     }
   },
