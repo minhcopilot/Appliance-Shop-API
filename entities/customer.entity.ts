@@ -2,7 +2,7 @@ import { Entity, Column, OneToMany, PrimaryGeneratedColumn, BeforeInsert, Before
 import { Order } from './order.entity';
 import * as bcrypt from 'bcrypt';
 import { Chat } from './chat.entity';
-
+const crypto = require('crypto');
 @Entity({ name: 'Customers' })
 export class Customer {
   // ID
@@ -38,6 +38,15 @@ export class Customer {
   @Column({ name: 'Password', length: 255, type: 'varchar', nullable: true }) // Increase length for hashed password
   password: string;
 
+  @Column({ name: 'passwordChangedAt', type: 'varchar', nullable: true })
+  passwordChangedAt: string;
+
+  @Column({ name: 'passwordResetToken', type: 'varchar', nullable: true })
+  passwordResetToken: string;
+
+  @Column({ name: 'passwordResetExpires', type: 'varchar', nullable: true })
+  passwordResetExpires: number;
+
   // ORDERS
   @OneToMany(() => Order, (o) => o.customer)
   orders: Order[];
@@ -56,5 +65,12 @@ export class Customer {
   // Validate password during login or other authentication scenarios
   async validatePassword(plainPassword: string): Promise<boolean> {
     return await bcrypt.compare(plainPassword, this.password);
+  }
+
+  createPasswordChangedToken(): string {
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    this.passwordResetExpires = Date.now() + 15 * 60 * 1000;
+    return resetToken;
   }
 }
