@@ -1,5 +1,6 @@
-import { Entity, Column, OneToMany, PrimaryGeneratedColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { Entity, Column, OneToMany, PrimaryGeneratedColumn, BeforeInsert, BeforeUpdate, ManyToOne } from 'typeorm';
 import { Order } from './order.entity';
+import { Role } from './role.entity';
 import * as bcrypt from 'bcrypt';
 import { Chat } from './chat.entity';
 
@@ -36,9 +37,13 @@ export class Employee {
   // Password (private to prevent accidental exposure)
   @Column({ name: 'Password', length: 255, type: 'varchar', nullable: true }) // Increase length for hashed password
   password: string;
+  @Column({ name: 'RoleCode', type: 'varchar', default: 'R3' })
+  roleCode: string;
 
+  @ManyToOne(() => Role, (role) => role.employees)
+  role: Role;
   // ORDERS
-  @OneToMany(() => Order, (o) => o.customer)
+  @OneToMany(() => Order, (o) => o.employee)
   orders: Order[];
 
   //CHATS

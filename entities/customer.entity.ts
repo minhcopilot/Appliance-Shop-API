@@ -1,5 +1,6 @@
-import { Entity, Column, OneToMany, PrimaryGeneratedColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { Entity, Column, OneToMany, PrimaryGeneratedColumn, BeforeInsert, BeforeUpdate, ManyToOne, JoinColumn } from 'typeorm';
 import { Order } from './order.entity';
+import { Role } from './role.entity';
 import * as bcrypt from 'bcrypt';
 import { Chat } from './chat.entity';
 const crypto = require('crypto');
@@ -38,15 +39,19 @@ export class Customer {
   @Column({ name: 'Password', length: 255, type: 'varchar', nullable: true }) // Increase length for hashed password
   password: string;
 
-  @Column({ name: 'passwordChangedAt', type: 'varchar', nullable: true })
+  @Column({ name: 'PasswordChangedAt', type: 'varchar', nullable: true })
   passwordChangedAt: string;
 
-  @Column({ name: 'passwordResetToken', type: 'varchar', nullable: true })
+  @Column({ name: 'PasswordResetToken', type: 'varchar', nullable: true })
   passwordResetToken: string;
 
-  @Column({ name: 'passwordResetExpires', type: 'varchar', nullable: true })
+  @Column({ name: 'PasswordResetExpires', type: 'varchar', nullable: true })
   passwordResetExpires: number;
 
+  @Column({ name: 'RoleCode', type: 'varchar', default: 'R2' })
+  roleCode: string;
+  @ManyToOne(() => Role, (role) => role.customers)
+  role: Role;
   // ORDERS
   @OneToMany(() => Order, (o) => o.customer)
   orders: Order[];

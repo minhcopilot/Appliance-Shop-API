@@ -17,7 +17,8 @@ router.use('/categories', categoriesRouter);
 router.use('/products', productsRouter);
 router.use('/suppliers', suppliersRouter);
 router.use('/orders', ordersRouter);
-router.use('/customers', passport.authenticate('jwt', { session: false }), customersRouter);
+// router.use('/customers', passport.authenticate('jwt', { session: false }), customersRouter);
+router.use('/customers', customersRouter);
 router.use('/employees', employeesRouter);
 
 export default router;

@@ -3,6 +3,7 @@ import express, { Express, NextFunction, Request, Response } from 'express';
 import { AppDataSource } from '../data-source';
 import { OrderDetail } from '../entities/order-details.entity';
 import { Order } from '../entities/order.entity';
+import { allowRoles } from '../middlewares/verifyRoles';
 
 const router = express.Router();
 
@@ -47,9 +48,8 @@ router.get('/', async (req: Request, res: Response, next: any) => {
     } else {
       res.json(orders);
     }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 
@@ -92,14 +92,13 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
     } else {
       res.sendStatus(204);
     }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 
 /* POST order */
-router.post('/', async (req: Request, res: Response, next: any) => {
+router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
     const queryRunner = repository.manager.connection.createQueryRunner();
     await queryRunner.connect();
@@ -128,9 +127,8 @@ router.post('/', async (req: Request, res: Response, next: any) => {
       await queryRunner.rollbackTransaction();
       res.status(500).json({ error: 'Transaction failed' });
     }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 

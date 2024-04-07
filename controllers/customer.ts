@@ -11,7 +11,7 @@ import sendMail from '../utils/sendMail';
 const crypto = require('crypto');
 const asyncHandler = require('express-async-handler');
 
-const login = asyncHandler(async (req: any, res: any) => {
+const login = asyncHandler(async (req: any, res: any, next: any) => {
   try {
     const authenticatedUser = req.user;
     const token = generateToken(authenticatedUser);
@@ -45,16 +45,9 @@ const register = asyncHandler(async (req: any, res: any) => {
 
     await repository.save(newCustomer);
 
-    const tokenCustomer = {
-      firstName: firstName,
-      lastName: lastName,
-      phoneNumber: phoneNumber,
-      address: address,
-      birthday: birthday,
-      email: email,
-    };
-    const token = generateToken(tokenCustomer);
     const user: any = await repository.findOneBy({ email: email });
+    const { password: _, ...tokenCustomer } = user;
+    const token = generateToken(tokenCustomer);
     const refreshToken = generateRefreshToken(user.id);
     return res.status(200).json({ message: 'Register successfully', Customer: tokenCustomer, token, refreshToken });
   } catch (error: any) {

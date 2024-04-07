@@ -2,25 +2,21 @@ import express, { NextFunction, Request, Response } from 'express';
 
 import { AppDataSource } from '../data-source';
 import { Category } from '../entities/category.entity';
-
+import { allowRoles } from '../middlewares/verifyRoles';
 const router = express.Router();
-
 const repository = AppDataSource.getRepository(Category);
 
 /* GET categories */
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', async (req: any, res: any, next: any) => {
   try {
     const categories = await repository.find();
     if (categories.length === 0) {
-      res.status(204).send({
-        error: 'No content',
-      });
+      res.status(204).json({ message: 'No categories found' });
     } else {
       res.status(200).json(categories);
     }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 
@@ -29,77 +25,65 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
   try {
     const category = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!category) {
-      return res.status(410).json({ error: 'Not found' });
+      return res.status(410).json({ message: 'Not found' });
     }
-    res.json(category);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(200).json({ message: 'Get detail category successfully', payload: category });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 
 /* POST category */
-router.post('/', async (req: Request, res: Response, next: any) => {
+router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
-    let category = new Category();
-    // const { name, description } = req.body;
-    // category.name = name;
-    // category.description = description;
+    const { name } = req.body;
+    const category = await repository.findOneBy({ name });
+    if (category) {
+      return res.status(400).json({ message: 'Category already exists' });
+    }
+    let newCategory = new Category();
 
-    category = {
-      ...category,
+    newCategory = {
+      ...newCategory,
       ...req.body,
     };
-    // Object.assign(category, req.body);
 
-    // MANUAL VALIDATION
-    // const errors = await category.validate();
-    // if (errors) {
-    //   res.status(400).json(errors);
-    //   return;
-    // }
-
-    // HOOKS (AUTO VALIDATE)
-    await repository.save(category);
-    res.status(201).json(category);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({ error });
+    const categoryCreated = await repository.save(newCategory);
+    res.status(201).json(categoryCreated);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 
 /* PATCH category */
-router.patch('/:id', async (req: Request, res: Response, next: any) => {
+router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
-    console.log('««««« hello »»»»»');
     const category = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!category) {
-      return res.status(404).json({ error: 'Not found' });
+      return res.status(404).json({ message: 'Not found' });
     }
 
     Object.assign(category, req.body);
     await repository.save(category);
 
     const updatedCategory = await repository.findOneBy({ id: parseInt(req.params.id) });
-    res.json(updatedCategory);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(200).json({ message: 'Category update successfully', payload: updatedCategory });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 
 /* DELETE category */
-router.delete('/:id', async (req: Request, res: Response, next: any) => {
+router.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
     const category = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!category) {
-      return res.status(404).json({ error: 'Not found' });
+      return res.status(404).json({ message: 'Not found' });
     }
     await repository.delete({ id: category.id });
-    res.status(200).send();
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(200).json({ message: 'Category deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 
