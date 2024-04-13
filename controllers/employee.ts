@@ -1,4 +1,4 @@
-import { Customer } from '../entities/customer.entity';
+import { Employee } from '../entities/employee.entity';
 import { AppDataSource } from '../data-source';
 import { MoreThan } from 'typeorm';
 import { generateToken, generateRefreshToken } from '../utils/jwtHelper';
@@ -6,7 +6,7 @@ import * as bcrypt from 'bcrypt';
 import { format } from 'date-fns';
 import JWT from 'jsonwebtoken';
 
-const repository = AppDataSource.getRepository(Customer);
+const repository = AppDataSource.getRepository(Employee);
 import sendMail from '../utils/sendMail';
 const crypto = require('crypto');
 const asyncHandler = require('express-async-handler');
@@ -16,47 +16,11 @@ const login = asyncHandler(async (req: any, res: any, next: any) => {
     const authenticatedUser = req.user;
     const token = generateToken(authenticatedUser);
     const user: any = await repository.findOneBy({ email: authenticatedUser.email });
-    const { password: _, ...tokenCustomer } = user;
+    const { password: _, ...tokenEmployee } = user;
     const refreshToken = generateRefreshToken(user.id);
     const payload = {
       message: 'Login successfully',
-      data: { customer: tokenCustomer, token, refreshToken },
-    };
-    return res.status(200).json({ status: 200, payload });
-  } catch (error: any) {
-    return res.status(500).json({ message: 'Internal server error', errors: error });
-  }
-});
-
-const register = asyncHandler(async (req: any, res: any) => {
-  try {
-    const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
-    const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
-    const customer = await repository.findOneBy({ email: email });
-    if (customer) {
-      return res.status(400).json({ message: 'Account already exists' });
-    }
-    const hash = await bcrypt.hash(password, 10);
-
-    const newCustomer = {
-      firstName: firstName,
-      lastName: lastName,
-      phoneNumber: phoneNumber,
-      address: address,
-      birthday: formattedBirthday,
-      email: email,
-      password: hash,
-    };
-
-    await repository.save(newCustomer);
-
-    const user: any = await repository.findOneBy({ email: email });
-    const { password: _, ...tokenCustomer } = user;
-    const token = generateToken(tokenCustomer);
-    const refreshToken = generateRefreshToken(user.id);
-    const payload = {
-      message: 'Register successfully',
-      data: { customer: tokenCustomer, token, refreshToken },
+      data: { employee: tokenEmployee, token, refreshToken },
     };
     return res.status(200).json({ status: 200, payload });
   } catch (error: any) {
@@ -75,10 +39,10 @@ const refreshToken = asyncHandler(async (req: any, res: any) => {
         return res.status(401).json({ error: 'Unauthorized' });
       }
       const { id } = user;
-      const customer = await repository.findOneBy({ id: id });
-      if (customer) {
-        const { firstName, lastName, phoneNumber, address, birthday, email } = customer;
-        const tokenCustomer = {
+      const employee = await repository.findOneBy({ id: id });
+      if (employee) {
+        const { firstName, lastName, phoneNumber, address, birthday, email } = employee;
+        const tokenEmployee = {
           firstName: firstName,
           lastName: lastName,
           phoneNumber: phoneNumber,
@@ -86,10 +50,10 @@ const refreshToken = asyncHandler(async (req: any, res: any) => {
           birthday: birthday,
           email: email,
         };
-        const token = generateToken(tokenCustomer);
+        const token = generateToken(tokenEmployee);
         const payload = {
           message: 'Refresh token successfully',
-          data: { customer: tokenCustomer, token },
+          data: { employee: tokenEmployee, token },
         };
         return res.status(200).json({ status: 200, payload });
       }
@@ -106,14 +70,14 @@ const loginSuccess = asyncHandler(async (req: any, res: any) => {
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
-    const customer = await repository.findOneBy({ email: email });
-    if (customer) {
-      const token = generateToken(customer);
-      const refreshToken = generateRefreshToken(customer.email);
-      const { password: _, ...tokenCustomer } = customer;
+    const employee = await repository.findOneBy({ email: email });
+    if (employee) {
+      const token = generateToken(employee);
+      const refreshToken = generateRefreshToken(employee.email);
+      const { password: _, ...tokenEmployee } = employee;
       const payload = {
         message: 'Login successfully',
-        data: { customer: tokenCustomer, token, refreshToken },
+        data: { employee: tokenEmployee, token, refreshToken },
       };
       return res.status(200).json({ status: 200, payload });
     }
@@ -125,11 +89,11 @@ const forgotPassword = asyncHandler(async (req: any, res: any) => {
   try {
     const { email } = req.query;
     if (!email) throw new Error('Missing email');
-    const customer = await repository.findOneBy({ email: email });
-    if (!customer) throw new Error('Customer not found');
+    const employee = await repository.findOneBy({ email: email });
+    if (!employee) throw new Error('Employee not found');
 
-    const resetToken = customer.createPasswordChangedToken();
-    await repository.save(customer);
+    const resetToken = employee.createPasswordChangedToken();
+    await repository.save(employee);
 
     const html = `Nếu bạn thực hiện đặt lại mật khẩu cho tài khoản cửa hàng đồ gia dụng
       thì nhấn vào link sau đây để đặt lại mật khẩu cho tài khoản email của mình:
@@ -158,23 +122,23 @@ const resetPassword = asyncHandler(async (req: any, res: any) => {
   if (!password || !token) throw new Error('Missing inputs');
 
   const passwordResetToken = crypto.createHash('sha256').update(token).digest('hex');
-  const customer = await repository.findOne({
+  const employee = await repository.findOne({
     where: {
       passwordResetToken,
       passwordResetExpires: MoreThan(Date.now()),
     },
   });
 
-  if (!customer) {
+  if (!employee) {
     throw new Error('Invalid reset token');
   }
 
-  customer.password = password;
-  customer.passwordResetToken = '';
-  customer.passwordChangedAt = new Date().toISOString();
-  customer.passwordResetExpires = null as any;
+  employee.password = password;
+  employee.passwordResetToken = '';
+  employee.passwordChangedAt = new Date().toISOString();
+  employee.passwordResetExpires = null as any;
 
-  await repository.save(customer);
+  await repository.save(employee);
 
   return res.status(200).json({
     success: true,
@@ -182,4 +146,4 @@ const resetPassword = asyncHandler(async (req: any, res: any) => {
   });
 });
 
-export { forgotPassword, resetPassword, login, register, refreshToken, loginSuccess };
+export { forgotPassword, resetPassword, login, refreshToken, loginSuccess };

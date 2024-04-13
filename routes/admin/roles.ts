@@ -13,10 +13,14 @@ router.get('/', async (req, res) => {
         message: 'No content',
       });
     } else {
-      return res.status(200).json({ message: 'Get all roles successfully', data: roles });
+      const payload = {
+        message: 'Get all roles successfully',
+        data: { roles },
+      };
+      return res.status(200).json({ status: 200, payload: payload });
     }
-  } catch (error) {
-    return res.status(500).json({ message: 'Internal server', error: error });
+  } catch (error: any) {
+    return res.status(500).json({ message: 'Internal server', errors: error });
   }
 });
 router.get('/:id', async (req, res) => {
@@ -27,10 +31,14 @@ router.get('/:id', async (req, res) => {
         message: 'Not found',
       });
     } else {
-      return res.status(200).json({ message: 'Get detail roles successfully', data: role });
+      const payload = {
+        message: 'Get detail roles successfully',
+        data: { role },
+      };
+      return res.status(200).json({ status: 200, payload: payload });
     }
-  } catch (error) {
-    return res.status(500).json({ message: 'Internal server', error: error });
+  } catch (error: any) {
+    return res.status(500).json({ message: 'Internal server', errors: error });
   }
 });
 router.post('/', async (req, res) => {
@@ -53,9 +61,13 @@ router.post('/', async (req, res) => {
       ...req.body,
     };
     const roleCreated = await repository.save(newRole);
-    return res.status(201).json({ message: 'Role created successfully', roleCreated: roleCreated });
-  } catch (error) {
-    return res.status(500).json({ message: 'Internal server', error: error });
+    const payload = {
+      message: 'Create role successfully',
+      data: { roleCreated },
+    };
+    return res.status(201).json({ status: 200, payload: payload });
+  } catch (error: any) {
+    return res.status(500).json({ message: 'Internal server', errors: error });
   }
 });
 
@@ -71,10 +83,14 @@ router.patch('/:id', async (req, res) => {
       await repository.save(role);
 
       const updatedRole = await repository.findOneBy({ id: parseInt(req.params.id) });
-      return res.status(200).json({ message: 'Role updated successfully', roleUpdated: updatedRole });
+      const payload = {
+        message: 'Update role successfully',
+        data: { updatedRole },
+      };
+      return res.status(200).json({ status: 200, payload: payload });
     }
-  } catch (error) {
-    return res.status(500).json({ message: 'Internal server', error: error });
+  } catch (error: any) {
+    return res.status(500).json({ message: 'Internal server', errors: error });
   }
 });
 
@@ -87,10 +103,10 @@ router.delete('/:id', async (req, res) => {
       });
     } else {
       await repository.remove(role);
-      return res.status(200).json({ message: 'Role deleted successfully' });
+      return res.status(200).json({ status: 200, payload: { message: 'Delete role successfully' } });
     }
-  } catch (error) {
-    return res.status(500).json({ message: 'Internal server', error: error });
+  } catch (error: any) {
+    return res.status(500).json({ message: 'Internal server', errors: error });
   }
 });
 export default router;

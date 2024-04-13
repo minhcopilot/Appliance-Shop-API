@@ -2,18 +2,39 @@ import express, { NextFunction, Request, Response } from 'express';
 import { AppDataSource } from '../data-source';
 import { allowRoles } from '../middlewares/verifyRoles';
 import { Customer } from '../entities/customer.entity';
-
+import * as bcrypt from 'bcrypt';
+import { format } from 'date-fns';
 const router = express.Router();
 const repository = AppDataSource.getRepository(Customer);
 
 /* GET customers */
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const customer = await repository.find();
+    const customer = await repository.find({
+      select: [
+        'id',
+        'firstName',
+        'lastName',
+        'phoneNumber',
+        'address',
+        'photo',
+        'birthday',
+        'email',
+        'passwordChangedAt',
+        'passwordResetToken',
+        'passwordResetExpires',
+        'roleCode',
+      ],
+    });
+
     if (customer.length === 0) {
       res.status(204).json({ message: 'No content' });
     } else {
-      return res.status(200).json({ message: 'Get all customer successfully', payload: customer });
+      const payload = {
+        message: 'Get all customer successfully',
+        data: { customer },
+      };
+      return res.status(200).json({ status: 200, payload: payload });
     }
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
@@ -23,11 +44,33 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 /* GET customer by id */
 router.get('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const customer = await repository.findOneBy({ id: parseInt(req.params.id) });
+    const customer = await repository.findOne({
+      where: { id: parseInt(req.params.id) },
+      select: [
+        'id',
+        'firstName',
+        'lastName',
+        'phoneNumber',
+        'address',
+        'photo',
+        'birthday',
+        'email',
+        'passwordChangedAt',
+        'passwordResetToken',
+        'passwordResetExpires',
+        'roleCode',
+      ],
+    });
+
     if (!customer) {
       return res.status(410).json({ message: 'Not found' });
     }
-    return res.status(200).json({ message: 'Get detail customer successfully', payload: customer });
+
+    const payload = {
+      message: 'Get detail customer successfully',
+      data: { customer },
+    };
+    return res.status(200).json({ status: 200, payload: payload });
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
@@ -36,20 +79,34 @@ router.get('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, n
 // POST customer
 router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email } = req.body;
-    const customer = await repository.findOneBy({ email });
+    const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
+    const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
+    const customer = await repository.findOneBy({ email: email });
     if (customer) {
-      return res.status(400).json({ message: 'Email already exists' });
+      return res.status(400).json({ message: 'Account already exists' });
     }
+    const hash = await bcrypt.hash(password, 10);
 
-    let newCustomer = new Customer();
-    newCustomer = {
-      ...newCustomer,
-      ...req.body,
+    const newCustomer = {
+      firstName: firstName,
+      lastName: lastName,
+      phoneNumber: phoneNumber,
+      address: address,
+      birthday: formattedBirthday,
+      email: email,
+      password: hash,
     };
 
-    const customerCreated = await repository.save(newCustomer);
-    return res.status(200).json({ message: 'Customer created successfully', payload: customerCreated });
+    await repository.save(newCustomer);
+
+    const user: any = await repository.findOneBy({ email: email });
+    const { password: _, ...tokenCustomer } = user;
+
+    const payload = {
+      message: 'Register successfully',
+      data: { customer: tokenCustomer },
+    };
+    return res.status(200).json({ status: 200, payload: payload });
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
@@ -66,7 +123,13 @@ router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response,
     await repository.save(customer);
 
     const updatedCustomer = await repository.findOneBy({ id: parseInt(req.params.id) });
-    return res.status(200).json({ message: 'Customer update successfully', payload: updatedCustomer });
+    const { password, ...updatedCustomerData } = updatedCustomer || {};
+    const payload = {
+      message: 'Customer updated successfully',
+      data: { customer: updatedCustomerData },
+    };
+
+    return res.status(200).json({ status: 200, payload: payload });
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -80,7 +143,7 @@ router.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response
       return res.status(410).json({ message: 'Not found' });
     }
     await repository.delete({ id: parseInt(req.params.id) });
-    res.status(200).json({ message: 'Customer deleted successfully' });
+    res.status(200).json({ status: 200, payload: { message: 'Customer deleted successfully' } });
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }
