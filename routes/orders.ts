@@ -3,17 +3,18 @@ import express, { Express, NextFunction, Request, Response } from 'express';
 import { AppDataSource } from '../data-source';
 import { OrderDetail } from '../entities/order-details.entity';
 import { Order } from '../entities/order.entity';
+import { Customer } from '../entities/customer.entity';
 import { allowRoles } from '../middlewares/verifyRoles';
 
 const router = express.Router();
-
-const repository = AppDataSource.getRepository(Order);
-
+const customerRepository = AppDataSource.getRepository(Customer);
+const orderRepository = AppDataSource.getRepository(Order);
+const orderDetailRepository = AppDataSource.getRepository(OrderDetail);
 /* GET orders */
 router.get('/', async (req: Request, res: Response, next: any) => {
   try {
     // SELECT * FROM [Products] AS 'product'
-    const orders = await repository
+    const orders = await orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.customer', 'customer')
       .leftJoinAndSelect('order.employee', 'employee')
@@ -46,7 +47,7 @@ router.get('/', async (req: Request, res: Response, next: any) => {
     if (orders.length === 0) {
       res.sendStatus(204);
     } else {
-      res.json(orders);
+      res.status(200).json(orders);
     }
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
@@ -56,7 +57,7 @@ router.get('/', async (req: Request, res: Response, next: any) => {
 router.get('/:id', async (req: Request, res: Response, next: any) => {
   try {
     // SELECT * FROM [Products] AS 'product'
-    const order = await repository
+    const order = await orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.customer', 'customer')
       .leftJoinAndSelect('order.employee', 'employee')
@@ -97,39 +98,102 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
   }
 });
 
-/* POST order */
-router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
+router.post('/', async (req: Request, res: Response) => {
+  const { shippedDate, status, description, shippingAddress, shippingCity, paymentType, customerId, employeeId, orderDetails } = req.body;
+
   try {
-    const queryRunner = repository.manager.connection.createQueryRunner();
-    await queryRunner.connect();
-    // Begin transaction
-    try {
-      await queryRunner.startTransaction();
+    const newOrder = orderRepository.create({
+      shippedDate,
+      status,
+      description,
+      shippingAddress,
+      shippingCity,
+      paymentType,
+      customerId,
+      employeeId,
+    });
 
-      const order = req.body as Order;
+    const savedOrder = await orderRepository.save(newOrder);
 
-      // Lưu thông tin order
-      const result = await queryRunner.manager.save(Order, order);
-
-      // Lưu thông tin order details
-      const orderDetails = order.orderDetails.map((od) => {
-        return { ...od, orderId: result.id };
+    if (orderDetails && orderDetails.length > 0) {
+      const orderDetailEntities = orderDetails.map((od: any) => {
+        return orderDetailRepository.create({
+          ...od,
+          order: savedOrder,
+        });
       });
 
-      await queryRunner.manager.save(OrderDetail, orderDetails);
-
-      // Commit transaction
-      await queryRunner.commitTransaction();
-
-      // Get order by id
-      res.redirect(`/orders/${result.id}`);
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      res.status(500).json({ error: 'Transaction failed' });
+      const savedOrderDetails = await orderDetailRepository.save(orderDetailEntities);
+      savedOrder.orderDetails = savedOrderDetails;
     }
-  } catch (error: any) {
-    res.status(500).json({ error: 'Internal server error', errors: error });
+
+    res.status(201).json(savedOrder);
+  } catch (error) {
+    res.status(500).json({ error: 'Đã xảy ra lỗi khi tạo đơn hàng mới.' });
   }
 });
 
+// GET /orders/user/:userId
+router.get('/user/:userId', async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.userId, 10);
+
+  try {
+    // Kiểm tra xem userId có tồn tại trong bảng Customer không
+    const customer = await customerRepository.findOne({ where: { id: userId } });
+    if (!customer) {
+      return res.status(404).json({ error: 'Không tìm thấy khách hàng.' });
+    }
+
+    // Lấy danh sách đơn hàng của khách hàng
+    const orders = await orderRepository.find({
+      where: { customer },
+      relations: ['orderDetails', 'orderDetails.product'],
+    });
+
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: 'Đã xảy ra lỗi khi lấy danh sách đơn hàng.' });
+  }
+});
+// update status
+router.patch('/:orderId', async (req: Request, res: Response) => {
+  const orderId = parseInt(req.params.orderId, 10);
+  const { status } = req.body;
+
+  try {
+    // Tìm đơn hàng theo orderId
+    const order = await orderRepository.findOneBy({ id: orderId });
+    if (!order) {
+      return res.status(404).json({ error: 'Không tìm thấy đơn hàng.' });
+    }
+
+    // Cập nhật trạng thái đơn hàng
+    order.status = status;
+    const updatedOrder = await orderRepository.save(order);
+
+    res.json(updatedOrder);
+  } catch (error) {
+    res.status(500).json({ error: 'Đã xảy ra lỗi khi cập nhật trạng thái đơn hàng.' });
+  }
+});
+
+// DELETE /orders/:orderId
+router.delete('/:orderId', async (req: Request, res: Response) => {
+  const orderId = parseInt(req.params.orderId, 10);
+
+  try {
+    // Tìm đơn hàng theo orderId
+    const order = await orderRepository.findOneBy({ id: orderId });
+    if (!order) {
+      return res.status(404).json({ error: 'Không tìm thấy đơn hàng.' });
+    }
+
+    // Xóa đơn hàng
+    await orderRepository.remove(order);
+
+    res.json({ message: 'Đơn hàng đã được xóa thành công.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Đã xảy ra lỗi khi xóa đơn hàng.' });
+  }
+});
 export default router;
