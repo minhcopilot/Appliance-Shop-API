@@ -16,7 +16,7 @@ export const postCategorySchema = yup.object().shape({
   url: yup.string().max(500),
   imageUrl: yup.string().max(500),
   isDeleted: yup.boolean().default(false),
-  createdBy: yup.string().required().max(100),
+  createdBy: yup.string().max(100),
   updatedBy: yup.string().max(100),
 });
 
@@ -56,6 +56,7 @@ const postCategoryDbSchema = new Schema<PostCategory>(
       type: String,
       required: true,
       maxLength: 100,
+      default: 'Annonyomous',
     },
     updatedBy: {
       type: String,
@@ -68,6 +69,12 @@ postCategoryDbSchema.virtual('postCount', {
   ref: 'Post',
   localField: '_id',
   foreignField: 'postCategoryId',
+  count: true,
+});
+postCategoryDbSchema.virtual('parentCategory', {
+  ref: 'PostCategory',
+  localField: 'parentId',
+  foreignField: '_id',
   count: true,
 });
 postCategoryDbSchema.plugin(mongooseLeanVirtuals);

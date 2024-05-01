@@ -22,6 +22,47 @@ app.set('port', port);
 const server = http.createServer(app);
 
 /**
+ * Socket.io
+ */
+
+import { Server } from 'socket.io';
+import { chatStart } from '../socket/chatStart';
+import passport from 'passport';
+import { passportVerifyToken } from '../middlewares/passport';
+import { NextFunction } from 'express';
+const io = new Server(server, {
+  cors: {
+    origin: true,
+    credentials: true,
+  },
+});
+
+//Use JWT Auth Middleware
+passport.use('jwt', passportVerifyToken);
+io.engine.use((req: any, res: Response, next: NextFunction) => {
+  const isHandshake = req._query.sid === undefined;
+  if (isHandshake) {
+    passport.authenticate('jwt', { session: false })(req, res, next);
+  } else {
+    next();
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('a user connected');
+  console.log(socket.request);
+  socket.on('client-message', (msg) => {
+    console.log('message: ' + msg);
+    if (msg.type === 'start') {
+      chatStart(socket, io);
+    }
+  });
+  socket.on('disconnect', () => {
+    console.log('user disconnected');
+  });
+});
+
+/**
  * Listen on provided port, on all network interfaces.
  */
 

@@ -14,17 +14,17 @@ export const fileUpload = async (id: any, req: Request, res: Response, data: Mod
     req.params.collectionName = data.modelName;
     uploadSingle(req, res, async (error) => {
       if (error instanceof multer.MulterError) {
-        res.status(500).json({ type: 'MulterError', message: error.message });
+        return res.status(500).json({ type: 'MulterError', message: error.message });
       } else if (error) {
-        res.status(500).json({ type: 'UnknownError', message: error.message });
+        return res.status(500).json({ type: 'UnknownError', message: error.message });
       } else {
         const UPLOAD_DIR = process.env.UPLOAD_DIR;
         const PUBLIC_DIR = process.env.PUBLIC_DIR;
-        fs.unlink(`${PUBLIC_DIR}/${found.imageUrl}`, (err) => {
-          console.log(err);
-        });
+        // fs.unlink(`${PUBLIC_DIR}/${found.imageUrl}`, (err) => {
+        //   console.log(err);
+        // });
         const patchData = {
-          imageUrl: `/${UPLOAD_DIR}/${data.modelName}/${id}/${req.body.file.filename}`,
+          imageUrl: `/${UPLOAD_DIR}/${data.modelName}/${id}/${req.body.file.name}`,
         };
 
         found.imageUrl = patchData.imageUrl;

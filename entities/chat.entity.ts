@@ -7,10 +7,10 @@ export class Chat {
   @PrimaryGeneratedColumn({ name: 'Id' })
   id: number;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'int', nullable: true })
   customerId: number;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'int', nullable: true })
   employeeId: number;
 
   @Column({ name: 'IsFinished', type: 'boolean', default: false })

@@ -1,6 +1,7 @@
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { Express, NextFunction, Request, Response } from 'express';
+import bodyParser from 'body-parser';
 import logger from 'morgan';
 import path from 'path';
 
@@ -36,6 +37,8 @@ AppDataSource.initialize().then(async () => {
   console.log('Data source was initialized');
 
   app.use(logger('dev'));
+  app.use(bodyParser.json({ limit: '10mb' }));
+  app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
