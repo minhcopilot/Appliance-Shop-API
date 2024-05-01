@@ -1,5 +1,5 @@
 import { IsNotEmpty, Length, MaxLength, ValidateIf, validate, validateOrReject } from 'class-validator';
-import { BaseEntity, BeforeInsert, BeforeUpdate, Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { BaseEntity, BeforeInsert, BeforeUpdate, Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { Product } from './product.entity';
 
 @Entity({ name: 'Categories' })
@@ -20,6 +20,42 @@ export class Category extends BaseEntity {
   // ----------------------------------------------------------------------------------------------
   @Column({ name: 'Description', type: 'nvarchar', length: 500, nullable: true })
   description: string;
+
+
+  @Column({ name: 'ParentId' })
+  ParentId: number
+
+
+  // CoverImageUrl
+  // ----------------------------------------------------------------------------------------------
+  @Column({ name: 'CoverImageUrl', type: 'nvarchar', length: 500, nullable: true })
+  CoverImageUrl: string;
+
+
+  // Active
+  // ----------------------------------------------------------------------------------------------
+  @Column({ name: 'Active', type: 'boolean', nullable: false })
+  Active: boolean;
+
+
+  // IsDeleted
+  // ----------------------------------------------------------------------------------------------
+  @Column({ name: 'IsDeleted', type: 'boolean', nullable: true})
+  IsDeleted: boolean;
+
+  @CreateDateColumn({ name: 'CreatedAt', type: 'datetime' })
+  createdAt: Date;
+
+  @Column({ name: 'CreatedBy', type: 'varchar', length: 100, nullable: true })
+  createdBy: string;
+
+  @UpdateDateColumn({ name: 'UpdatedAt', type: 'datetime' })
+  updatedAt: Date;
+
+  @Column({ name: 'UpdatedBy', type: 'varchar', length: 100, nullable: true })
+  updatedBy: string;
+
+
 
   // ----------------------------------------------------------------------------------------------
   // RELATIONS
@@ -44,3 +80,4 @@ export class Category extends BaseEntity {
     await validateOrReject(this);
   }
 }
+

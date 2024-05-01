@@ -27,7 +27,7 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
     if (!category) {
       return res.status(410).json({ message: 'Not found' });
     }
-    return res.status(200).json({ message: 'Get detail category successfully', payload: category });
+    return res.status(200).json(category);
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
@@ -67,7 +67,7 @@ router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response,
     await repository.save(category);
 
     const updatedCategory = await repository.findOneBy({ id: parseInt(req.params.id) });
-    return res.status(200).json({ message: 'Category update successfully', payload: updatedCategory });
+    return res.status(200).json(updatedCategory);
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
