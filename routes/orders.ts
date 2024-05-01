@@ -4,9 +4,11 @@ import { AppDataSource } from '../data-source';
 import { OrderDetail } from '../entities/order-details.entity';
 import { Order } from '../entities/order.entity';
 import { Customer } from '../entities/customer.entity';
+import { Product } from '../entities/product.entity';
 import { allowRoles } from '../middlewares/verifyRoles';
 
 const router = express.Router();
+const productRepository = AppDataSource.getRepository(Product);
 const customerRepository = AppDataSource.getRepository(Customer);
 const orderRepository = AppDataSource.getRepository(Order);
 const orderDetailRepository = AppDataSource.getRepository(OrderDetail);
@@ -89,7 +91,7 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
       .getOne();
 
     if (order) {
-      res.json(order);
+      res.status(200).json(order);
     } else {
       res.sendStatus(204);
     }
@@ -150,7 +152,7 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
       relations: ['orderDetails', 'orderDetails.product'],
     });
 
-    res.json(orders);
+    res.status(200).json(orders);
   } catch (error) {
     res.status(500).json({ error: 'Đã xảy ra lỗi khi lấy danh sách đơn hàng.' });
   }
@@ -158,25 +160,61 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
 // update status
 router.patch('/:orderId', async (req: Request, res: Response) => {
   const orderId = parseInt(req.params.orderId, 10);
-  const { status } = req.body;
+  const { shippedDate, status, description, shippingAddress, shippingCity, paymentType, customerId, employeeId, orderDetails } = req.body;
 
   try {
     // Tìm đơn hàng theo orderId
     const order = await orderRepository.findOneBy({ id: orderId });
+
     if (!order) {
-      return res.status(404).json({ error: 'Không tìm thấy đơn hàng.' });
+      return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Cập nhật trạng thái đơn hàng
+    // Cập nhật các trường của đơn hàng
+    order.shippedDate = shippedDate;
     order.status = status;
-    const updatedOrder = await orderRepository.save(order);
+    order.description = description;
+    order.shippingAddress = shippingAddress;
+    order.shippingCity = shippingCity;
+    order.paymentType = paymentType;
+    order.customerId = customerId;
+    order.employeeId = employeeId;
 
-    res.json(updatedOrder);
-  } catch (error) {
-    res.status(500).json({ error: 'Đã xảy ra lỗi khi cập nhật trạng thái đơn hàng.' });
+    // Nếu không có orderDetails mới được gửi lên, giữ nguyên orderDetails hiện tại
+    if (!orderDetails || orderDetails.length === 0) {
+      console.log('««««« 1 »»»»»', 1);
+      const newOrderDetail: any = orderDetailRepository.create({
+        orderId: order.id,
+      });
+      console.log('««««« newOrderDetails »»»»»', newOrderDetail);
+      order.orderDetails = await orderDetailRepository.save(newOrderDetail);
+      console.log('««««« order.orderDetails »»»»»', order.orderDetails);
+    } else {
+      // Xóa tất cả chi tiết đơn hàng hiện có
+      order.orderDetails = [];
+
+      // Thêm các chi tiết đơn hàng mới
+      const newOrderDetails = orderDetails.map((od: any) => {
+        const newOrderDetail = orderDetailRepository.create({
+          orderId: order.id,
+          productId: od.productId,
+          quantity: od.quantity,
+          price: od.price,
+          discount: od.discount,
+        });
+        return newOrderDetail;
+      });
+      order.orderDetails = await orderDetailRepository.save(newOrderDetails);
+    }
+
+    // Lưu đơn hàng đã cập nhật
+    const updatedOrder = await orderRepository.save(order);
+    res.status(200).json(updatedOrder);
+  } catch (error: any) {
+    console.log('««««« error »»»»»', error);
+    res.status(500).json({ error: 'Failed to update order' });
   }
 });
-
 // DELETE /orders/:orderId
 router.delete('/:orderId', async (req: Request, res: Response) => {
   const orderId = parseInt(req.params.orderId, 10);
@@ -191,7 +229,7 @@ router.delete('/:orderId', async (req: Request, res: Response) => {
     // Xóa đơn hàng
     await orderRepository.remove(order);
 
-    res.json({ message: 'Đơn hàng đã được xóa thành công.' });
+    res.status(200).json({ message: 'Đơn hàng đã được xóa thành công.' });
   } catch (error) {
     res.status(500).json({ error: 'Đã xảy ra lỗi khi xóa đơn hàng.' });
   }

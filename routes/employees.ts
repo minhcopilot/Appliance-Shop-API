@@ -11,17 +11,13 @@ const repository = AppDataSource.getRepository(Employee);
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const employee = await repository.find({
-      select: ['id', 'firstName', 'lastName', 'phoneNumber', 'address', 'photo', 'birthday', 'email', 'roleCode'],
+      select: ['id', 'firstName', 'lastName', 'password', 'phoneNumber', 'address', 'photo', 'birthday', 'email', 'roleCode'],
     });
 
     if (employee.length === 0) {
       return res.status(204).json({ status: 204, message: 'No content' });
     } else {
-      const payload = {
-        message: 'Get all employee successfully',
-        data: { employee },
-      };
-      return res.status(200).json({ status: 200, payload: payload });
+      return res.status(200).json(employee);
     }
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
@@ -38,11 +34,8 @@ router.get('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, n
     if (!employee) {
       return res.status(410).json({ message: 'Not found' });
     }
-    const payload = {
-      message: 'Get detail employee successfully',
-      data: { employee },
-    };
-    return res.status(200).json({ status: 200, payload: payload });
+
+    return res.status(200).json(employee);
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
@@ -74,11 +67,7 @@ router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, nex
     const user: any = await repository.findOneBy({ email: email });
     const { password: _, ...tokenEmployee } = user;
 
-    const payload = {
-      message: 'Register successfully',
-      data: { customer: tokenEmployee },
-    };
-    return res.status(200).json({ status: 200, payload: payload });
+    return res.status(200).json(tokenEmployee);
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
@@ -88,22 +77,29 @@ router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, nex
 router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const employee = await repository.findOneBy({ id: parseInt(req.params.id) });
+    const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
+    const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
     if (!employee) {
       return res.status(410).json({ message: 'Not found' });
     }
-    Object.assign(employee, req.body);
-    await repository.save(employee);
-
-    const updatedEmployee = await repository.findOneBy({ id: parseInt(req.params.id) });
-    const { password, ...updatedEmployeeData } = updatedEmployee || {};
-    const payload = {
-      message: 'Employee updated successfully',
-      data: { employee: updatedEmployeeData },
-    };
-
-    return res.status(200).json({ status: 200, payload: payload });
-  } catch (error) {
-    return res.status(500).json({ error: 'Internal server error' });
+    const hash = await bcrypt.hash(password, 10);
+    if (employee) {
+      employee.firstName = firstName || employee.firstName;
+      employee.lastName = lastName || employee.lastName;
+      employee.phoneNumber = phoneNumber || employee.phoneNumber;
+      employee.password = password || employee.password;
+      employee.address = address || employee.address;
+      employee.birthday = new Date(formattedBirthday);
+      employee.email = email || employee.email;
+      if (password) {
+        employee.password = hash;
+      }
+      const updatedEmployee = await repository.save(employee);
+      const { password: _, ...updatedEmployeeData } = updatedEmployee || {};
+      return res.status(200).json(updatedEmployeeData);
+    }
+  } catch (error: any) {
+    return res.status(500).json({ message: 'Internal server error', errors: error });
   }
 });
 
@@ -115,7 +111,7 @@ router.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response
       return res.status(410).json({ message: 'Not found' });
     }
     await repository.delete({ id: parseInt(req.params.id) });
-    res.status(200).json({ status: 200, payload: { message: 'Employee deleted successfully' } });
+    res.status(200).json({ message: 'Employee deleted successfully' });
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }
