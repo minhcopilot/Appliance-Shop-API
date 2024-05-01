@@ -13,3 +13,4 @@ export const checkUnique = async (data: Model<any, any, any, any, any, any>, bod
     console.log(error);
   }
 };
+

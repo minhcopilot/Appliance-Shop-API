@@ -3,6 +3,7 @@ import { Order } from './order.entity';
 import { Role } from './role.entity';
 import * as bcrypt from 'bcrypt';
 import { Chat } from './chat.entity';
+import { IsEmail, IsPhoneNumber } from 'class-validator';
 const crypto = require('crypto');
 @Entity({ name: 'Customers' })
 export class Customer {
@@ -10,7 +11,7 @@ export class Customer {
   @PrimaryGeneratedColumn({ name: 'Id' })
   id: number;
 
-  // FIRST NAME
+    // FIRST NAME
   @Column({ name: 'FirstName', type: 'nvarchar', length: 50 })
   firstName: string;
 
@@ -20,6 +21,7 @@ export class Customer {
 
   // PHONE NUMBER
   @Column({ name: 'PhoneNumber', length: 15, nullable: true, type: 'varchar' })
+  @IsPhoneNumber('VN')
   phoneNumber: string;
 
   // ADDRESS
@@ -34,6 +36,7 @@ export class Customer {
 
   // EMAIL
   @Column({ name: 'Email', unique: true, length: 50, type: 'varchar' })
+  @IsEmail()
   email: string;
   // Password (private to prevent accidental exposure)
   @Column({ name: 'Password', length: 255, type: 'varchar', nullable: true }) // Increase length for hashed password

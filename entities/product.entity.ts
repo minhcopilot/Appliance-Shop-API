@@ -1,12 +1,13 @@
-import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 import { Category } from './category.entity';
 import { Supplier } from './supplier.entity';
 import { OrderDetail } from './order-details.entity';
+import { Max, Min, min } from 'class-validator';
 
 @Entity({ name: 'Products' })
 export class Product {
-  @PrimaryGeneratedColumn({ name: 'Id' })
+  @PrimaryGeneratedColumn({ name: 'Id' , type: 'int'})
   id: number;
 
   // ----------------------------------------------------------------------------------------------
@@ -19,12 +20,15 @@ export class Product {
   // PRICE
   // ----------------------------------------------------------------------------------------------
   @Column({ name: 'Price', type: 'decimal', precision: 18, scale: 2 })
+  @Min(0)
   price: number;
 
   // ----------------------------------------------------------------------------------------------
   // DISCOUNT
   // ----------------------------------------------------------------------------------------------
   @Column({ name: 'Discount', type: 'decimal', precision: 18, scale: 2, default: 0 })
+  @Min(0)
+  @Max(90)
   discount: number;
 
   // ----------------------------------------------------------------------------------------------
@@ -41,16 +45,39 @@ export class Product {
   description: string;
 
   // ----------------------------------------------------------------------------------------------
+
+   // IMAGE
+  // ----------------------------------------------------------------------------------------------
+  @Column({ type: 'text', nullable: true })
+  imageUrls: string[];
+  
+  @Column({ name: 'CoverImageUrl', type: 'varchar', length: 500, nullable: true })
+  coverImageUrl: string;
+
   // CATEGORY ID
   // ----------------------------------------------------------------------------------------------
-  @Column({ type: 'int' })
+  @Column({ type: 'int' , nullable: true  })
   categoryId: number;
 
   // ----------------------------------------------------------------------------------------------
   // SUPPLIER ID
   // ----------------------------------------------------------------------------------------------
-  @Column({ type: 'int' })
+  @Column({ type: 'int' , nullable: true })
   supplierId: number;
+
+  
+  @CreateDateColumn({ name: 'CreatedAt', type: 'datetime' })
+  createdAt: Date;
+
+  @Column({ name: 'CreatedBy', type: 'varchar', length: 100, nullable: true })
+  createdBy: string;
+
+  @UpdateDateColumn({ name: 'UpdatedAt', type: 'datetime' })
+  updatedAt: Date;
+
+  @Column({ name: 'UpdatedBy', type: 'varchar', length: 100, nullable: true })
+  updatedBy: string;
+ 
 
   // ----------------------------------------------------------------------------------------------
   // RELATIONS

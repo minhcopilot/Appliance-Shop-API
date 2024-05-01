@@ -3,6 +3,7 @@ import express, { Request, Response } from 'express';
 import { AppDataSource } from '../data-source';
 import { Product } from '../entities/product.entity';
 import { allowRoles } from '../middlewares/verifyRoles';
+import {  fileUploadProduct, filesUploadProduct } from './fileUpload';
 
 const router = express.Router();
 
@@ -103,5 +104,31 @@ router.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
+
+
+
+// Upload image product
+router.post('/uploads/:id', async (req: Request, res: Response, next: any) => {
+
+  const productId = req.params.id; // Lấy id sản phẩm từ URL
+  try {
+    await filesUploadProduct(productId, req, res); // Gọi hàm xử lý upload từ controller
+  } catch (error) {
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+
+});
+
+router.post('/upload/:id', async (req: Request, res: Response, next: any) => {
+
+  const productId = req.params.id; // Lấy id sản phẩm từ URL
+  try {
+    await fileUploadProduct(productId, req, res); // Gọi hàm xử lý upload từ controller
+  } catch (error) {
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+
+});
+
 
 export default router;

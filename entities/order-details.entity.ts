@@ -1,4 +1,4 @@
-import { IsNotEmpty } from 'class-validator';
+import { IsNotEmpty, Max, Min } from 'class-validator';
 import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
 
 import { Order } from './order.entity';
@@ -13,13 +13,17 @@ export class OrderDetail {
   productId: number;
 
   @Column({ name: 'Quantity', type: 'decimal', precision: 18, scale: 2, default: 0 })
+  @Min(0)
   quantity: number;
 
   @Column({ name: 'Price', type: 'decimal', precision: 18, scale: 2, default: 0 })
+  @Min(0)
   price: number;
 
   @Column({ name: 'Discount', type: 'decimal', precision: 18, scale: 2, default: 0 })
   discount: number;
+  @Min(0)
+  @Max(90)
 
   @ManyToOne(() => Product, (p) => p.orderDetails)
   product: Product;

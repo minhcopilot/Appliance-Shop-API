@@ -20,6 +20,7 @@ export class Order {
   // STATUS
   // ----------------------------------------------------------------------------------------------
   @Column({ name: 'Status', type: 'varchar', default: 'WAITING', length: 50 })
+  @IsIn(['WAITING', 'COMPLETED', 'CANCELLED'])
   status: string;
 
   // ----------------------------------------------------------------------------------------------
@@ -45,6 +46,7 @@ export class Order {
   // PAYMENT TYPE
   // ----------------------------------------------------------------------------------------------
   @Column({ name: 'PaymentType', type: 'varchar', length: 20, default: 'CASH' })
+  @IsIn(['CASH', 'CREDIT CARD'])
   paymentType: string;
 
   @Column({ type: 'int' })
