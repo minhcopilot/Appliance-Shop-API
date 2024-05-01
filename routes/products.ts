@@ -22,7 +22,7 @@ router.get('/', async (req: Request, res: Response, next: any) => {
     if (products.length === 0) {
       res.status(204).json({ message: 'No products' });
     } else {
-      res.status(200).json({ message: 'get products successfully', payload: products });
+      res.status(200).json(products);
     }
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
@@ -42,7 +42,7 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
     if (!product) {
       return res.status(404).json({ error: 'Not found' });
     }
-    res.status(200).json({ message: 'Get detail product successfully', payload: product });
+    res.status(200).json(product);
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
@@ -60,7 +60,7 @@ router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, nex
     const product = new Product();
     Object.assign(product, req.body);
     await repository.save(product);
-    res.status(201).json({ message: 'Product saved successfully', payload: product });
+    res.status(201).json(product);
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
@@ -83,7 +83,7 @@ router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response,
       .leftJoinAndSelect('p.category', 'c')
       .where('p.id = :id', { id: parseInt(req.params.id) })
       .getOne();
-    res.json(updatedCategory);
+    res.status(200).json(updatedCategory);
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
@@ -99,7 +99,7 @@ router.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response
     await repository.delete({
       id: product.id,
     });
-    res.status(200).send();
+    res.status(200).send({ message: 'Deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
