@@ -131,6 +131,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.status(201).json(savedOrder);
   } catch (error) {
+    console.log('««««« error »»»»»', error);
     res.status(500).json({ error: 'Đã xảy ra lỗi khi tạo đơn hàng mới.' });
   }
 });
@@ -165,7 +166,6 @@ router.patch('/:orderId', async (req: Request, res: Response) => {
   try {
     // Tìm đơn hàng theo orderId
     const order = await orderRepository.findOneBy({ id: orderId });
-
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
@@ -180,23 +180,17 @@ router.patch('/:orderId', async (req: Request, res: Response) => {
     order.customerId = customerId;
     order.employeeId = employeeId;
 
+    order.orderDetails = [];
     // Nếu không có orderDetails mới được gửi lên, giữ nguyên orderDetails hiện tại
     if (!orderDetails || orderDetails.length === 0) {
-      console.log('««««« 1 »»»»»', 1);
-      const newOrderDetail: any = orderDetailRepository.create({
-        orderId: order.id,
-      });
-      console.log('««««« newOrderDetails »»»»»', newOrderDetail);
-      order.orderDetails = await orderDetailRepository.save(newOrderDetail);
-      console.log('««««« order.orderDetails »»»»»', order.orderDetails);
+      order.orderDetails = [];
+      order.orderDetails = await orderDetailRepository.save(order.orderDetails);
     } else {
       // Xóa tất cả chi tiết đơn hàng hiện có
       order.orderDetails = [];
-
       // Thêm các chi tiết đơn hàng mới
       const newOrderDetails = orderDetails.map((od: any) => {
         const newOrderDetail = orderDetailRepository.create({
-          orderId: order.id,
           productId: od.productId,
           quantity: od.quantity,
           price: od.price,
