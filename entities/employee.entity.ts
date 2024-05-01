@@ -1,7 +1,9 @@
-import { Entity, Column, OneToMany, PrimaryGeneratedColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { Entity, Column, OneToMany, PrimaryGeneratedColumn, BeforeInsert, BeforeUpdate, ManyToOne } from 'typeorm';
 import { Order } from './order.entity';
+import { Role } from './role.entity';
 import * as bcrypt from 'bcrypt';
 import { Chat } from './chat.entity';
+import crypto from 'crypto';
 import { IsEmail, IsPhoneNumber, isEmail } from 'class-validator';
 
 @Entity({ name: 'Employees' })
@@ -40,8 +42,22 @@ export class Employee {
   @Column({ name: 'Password', length: 255, type: 'varchar', nullable: true }) // Increase length for hashed password
   password: string;
 
+  @Column({ name: 'PasswordChangedAt', type: 'varchar', nullable: true })
+  passwordChangedAt: string;
+
+  @Column({ name: 'PasswordResetToken', type: 'varchar', nullable: true })
+  passwordResetToken: string;
+
+  @Column({ name: 'PasswordResetExpires', type: 'varchar', nullable: true })
+  passwordResetExpires: number;
+
+  @Column({ name: 'RoleCode', type: 'varchar', default: 'R3' })
+  roleCode: string;
+  @ManyToOne(() => Role, (role) => role.employees)
+  role: Role;
+
   // ORDERS
-  @OneToMany(() => Order, (o) => o.customer)
+  @OneToMany(() => Order, (o) => o.employee)
   orders: Order[];
 
   //CHATS
@@ -58,5 +74,12 @@ export class Employee {
   // Validate password during login or other authentication scenarios
   async validatePassword(plainPassword: string): Promise<boolean> {
     return await bcrypt.compare(plainPassword, this.password);
+  }
+
+  createPasswordChangedToken(): string {
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    this.passwordResetExpires = Date.now() + 15 * 60 * 1000;
+    return resetToken;
   }
 }
