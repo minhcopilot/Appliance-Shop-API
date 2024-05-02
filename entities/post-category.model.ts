@@ -75,7 +75,7 @@ postCategoryDbSchema.virtual('parentCategory', {
   ref: 'PostCategory',
   localField: 'parentId',
   foreignField: '_id',
-  count: true,
+  justOne: true,
 });
 postCategoryDbSchema.plugin(mongooseLeanVirtuals);
 postCategoryDbSchema.set('toObject', { virtuals: true });

@@ -14,8 +14,8 @@ export const postSchema = yup.object().shape({
     }),
   title: yup.string().required().max(100),
   content: yup.string().required(),
-  authorId: yup.number().required(),
-  authorName: yup.string().required().max(100),
+  authorId: yup.number(),
+  authorName: yup.string().max(100),
   url: yup.string().max(500),
   imageUrl: yup.string().max(500),
   status: yup.string().max(20).oneOf(['draft', 'published', 'deleted']).default('draft'),
@@ -54,11 +54,13 @@ const postDbSchema = new Schema<Post>(
     authorId: {
       type: Number,
       required: true,
+      default: 0,
     },
     authorName: {
       type: String,
       required: true,
       maxLength: 100,
+      default: 'Anonymous',
     },
     url: {
       type: String,
@@ -101,6 +103,12 @@ postDbSchema.virtual('commentsCount', {
   localField: '_id',
   foreignField: 'postId',
   count: true,
+});
+postDbSchema.virtual('category', {
+  ref: 'PostCategory',
+  localField: 'postCategoryId',
+  foreignField: '_id',
+  justOne: true,
 });
 postDbSchema.plugin(mongooseLeanVirtuals);
 postDbSchema.set('toObject', { virtuals: true });

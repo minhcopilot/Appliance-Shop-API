@@ -12,7 +12,7 @@ export const PostsRouter = express.Router();
 // Client get all post
 PostsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.json(await Post.find({ status: 'published' }).lean({ virtuals: true }).populate('commentsCount'));
+    res.json(await Post.find({ status: 'published' }).lean({ virtuals: true }).populate(['commentsCount', 'category']));
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Database Error' });
@@ -22,7 +22,7 @@ PostsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => 
 // Admin get all posts
 PostsRouter.get('/all', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.json(await Post.find().lean({ virtuals: true }).populate('commentsCount'));
+    res.json(await Post.find().lean({ virtuals: true }).populate(['commentsCount', 'category']));
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Database Error' });
@@ -75,7 +75,7 @@ PostsRouter.get('/search/query', async (req: Request, res: Response) => {
 PostsRouter.get('/:url', async (req: Request, res: Response, next: NextFunction) => {
   const url = req.params.url;
   try {
-    let postData = await Post.findOne({ url, status: 'published' }).lean({ virtuals: true }).populate('commentsCount');
+    let postData = await Post.findOne({ url, status: 'published' }).lean({ virtuals: true }).populate(['commentsCount', 'category']);
     postData ? res.json(postData) : res.status(404).json({ message: `Couldn't find that post` });
   } catch (error: any) {
     console.log(error);
@@ -83,11 +83,14 @@ PostsRouter.get('/:url', async (req: Request, res: Response, next: NextFunction)
   }
 });
 
-//Admin get post by url
-PostsRouter.get('/:url', async (req: Request, res: Response, next: NextFunction) => {
+//Admin get post by url or id
+PostsRouter.get('/all/:url', async (req: Request, res: Response, next: NextFunction) => {
   const url = req.params.url;
   try {
-    let postData = await Post.findOne({ url }).lean({ virtuals: true }).populate('commentsCount');
+    let postData = await Post.findOne({ $or: [{ _id: url }, { url: url }] })
+      .lean({ virtuals: true })
+      .populate(['commentsCount', 'category']);
+
     postData ? res.json(postData) : res.status(404).json({ message: `Couldn't find that post` });
   } catch (error: any) {
     console.log(error);
@@ -112,7 +115,9 @@ PostsRouter.get('/:url/comments', async (req: Request, res: Response, next: Next
         as: 'posts',
       },
     };
-    let found = await Comment.aggregate([lookupPost, { $unwind: '$posts' }, { $match: { 'posts.url': url, status: 'approved' } }]).project({ posts: 0 });
+    let found = await Comment.aggregate([lookupPost, { $unwind: '$posts' }, { $match: { $or: [{ _id: url }, { url: url }], status: 'approved' } }]).project({
+      posts: 0,
+    });
     res.json(found);
   } catch (error) {
     console.log(error);
@@ -245,10 +250,10 @@ PostsRouter.post('/', async (req: Request, res: Response, next: NextFunction) =>
 });
 
 //Admin post delete
-PostsRouter.delete('/:url', async (req: Request, res: Response) => {
+PostsRouter.delete('/all/:url', async (req: Request, res: Response) => {
   const url = req.params.url;
   try {
-    let idData = await Post.findOneAndDelete({ url });
+    let idData = await Post.findOneAndDelete({ $or: [{ _id: url }, { url: url }] });
     idData ? res.json({ message: 'Post Post deleted successfully' }) : res.status(404).json({ message: `Couldn't find that Post Post` });
   } catch (error) {
     res.status(500).json({ message: 'Database Error' });
@@ -256,7 +261,7 @@ PostsRouter.delete('/:url', async (req: Request, res: Response) => {
 });
 
 //Admin post update
-PostsRouter.patch('/:url', async (req, res) => {
+PostsRouter.patch('/all/:url', async (req, res) => {
   const url = req.params.url;
   const { file, ...body } = req.body;
   let inputError = [];
@@ -279,7 +284,7 @@ PostsRouter.patch('/:url', async (req, res) => {
     }
     try {
       body.title && (body.url = urlGenerate(body.title));
-      let idData = await Post.findOneAndUpdate({ url }, body);
+      let idData = await Post.findOneAndUpdate({ $or: [{ _id: url }, { url: url }] }, body);
       if (idData) {
         if (req.body.file) {
           console.log(req.body.file[0]);

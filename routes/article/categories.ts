@@ -11,7 +11,7 @@ export const PostCategoriesRouter = express.Router();
 //Client get all post categories
 PostCategoriesRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.json(await PostCategory.find({ isDeleted: false }).lean({ virtuals: true }).populate('postCount', 'parentCategory'));
+    res.json(await PostCategory.find({ isDeleted: false }).lean({ virtuals: true }).populate(['postCount', 'parentCategory']));
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Database Error' });
@@ -21,7 +21,7 @@ PostCategoriesRouter.get('/', async (req: Request, res: Response, next: NextFunc
 //Admin get all post categories
 PostCategoriesRouter.get('/all', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.json(await PostCategory.find().lean({ virtuals: true }).populate('postCount', 'parentCategory'));
+    res.json(await PostCategory.find().lean({ virtuals: true }).populate(['postCount', 'parentCategory']));
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Database Error' });
@@ -32,7 +32,7 @@ PostCategoriesRouter.get('/all', async (req: Request, res: Response, next: NextF
 PostCategoriesRouter.get('/:url', async (req: Request, res: Response, next: NextFunction) => {
   const url = req.params.url;
   try {
-    let categoryData = await PostCategory.findOne({ url, isDeleted: false }).lean({ virtuals: true }).populate('postCount', 'parentCategory');
+    let categoryData = await PostCategory.findOne({ url, isDeleted: false }).lean({ virtuals: true }).populate(['postCount', 'parentCategory']);
     categoryData ? res.json(categoryData) : res.status(404).json({ message: `Couldn't find that category` });
   } catch (error: any) {
     console.log(error);
@@ -44,7 +44,7 @@ PostCategoriesRouter.get('/:url', async (req: Request, res: Response, next: Next
 PostCategoriesRouter.get('/all/:url', async (req: Request, res: Response, next: NextFunction) => {
   const url = req.params.url;
   try {
-    let categoryData = await PostCategory.findOne({ url }).lean({ virtuals: true }).populate('postCount', 'parentCategory');
+    let categoryData = await PostCategory.findOne({ url }).lean({ virtuals: true }).populate(['postCount', 'parentCategory']);
     categoryData ? res.json(categoryData) : res.status(404).json({ message: `Couldn't find that category` });
   } catch (error: any) {
     console.log(error);

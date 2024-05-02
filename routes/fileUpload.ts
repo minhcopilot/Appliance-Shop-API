@@ -22,9 +22,10 @@ export const fileUpload = async (id: any, req: Request, res: Response, data: Mod
       } else {
         const UPLOAD_DIR = process.env.UPLOAD_DIR;
         const PUBLIC_DIR = process.env.PUBLIC_DIR;
-        // fs.unlink(`${PUBLIC_DIR}/${found.imageUrl}`, (err) => {
-        //   console.log(err);
-        // });
+        if (found.imageUrl)
+          fs.unlink(`${PUBLIC_DIR}/${found.imageUrl}`, (err) => {
+            console.log(err);
+          });
         const patchData = {
           imageUrl: `/${UPLOAD_DIR}/${data.modelName}/${id}/${req.body.file.name}`,
         };
@@ -71,19 +72,11 @@ export const filesUpload = async (id: any, req: Request, res: Response, data: Mo
   }
 };
 
-
-
-
 //----------------------------------------------
 //Upaload for product
 //----------------------------------------------
 
-
-
 const repository = AppDataSource.getRepository(Product);
-
-
-
 
 export const fileUploadProduct = async (id: any, req: Request, res: Response) => {
   try {
@@ -101,12 +94,11 @@ export const fileUploadProduct = async (id: any, req: Request, res: Response) =>
       } else {
         const UPLOAD_DIR = process.env.UPLOAD_DIR;
         const PUBLIC_DIR = process.env.PUBLIC_DIR;
-        if (found.coverImageUrl){
-        fs.unlink(`${PUBLIC_DIR}/${found.coverImageUrl}`, (err) => {
-          console.log(err);
-           
-        });
-      }
+        if (found.coverImageUrl) {
+          fs.unlink(`${PUBLIC_DIR}/${found.coverImageUrl}`, (err) => {
+            console.log(err);
+          });
+        }
         const filename = req.body.file.filename;
         const imageUrl = `/${UPLOAD_DIR}/product/CoverImg/${found.id}/${filename}`;
         found.coverImageUrl = imageUrl;
@@ -119,12 +111,7 @@ export const fileUploadProduct = async (id: any, req: Request, res: Response) =>
   }
 };
 
-
-
-
 export const filesUploadProduct = async (id: any, req: Request, res: Response) => {
-  
-
   try {
     const found = await repository.findOne({ where: { id: id } });
     if (!found) {
@@ -156,4 +143,3 @@ export const filesUploadProduct = async (id: any, req: Request, res: Response) =
     return res.status(500).json({ message: 'Database Error' });
   }
 };
-
