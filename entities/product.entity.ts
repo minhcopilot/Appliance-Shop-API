@@ -7,7 +7,7 @@ import { Max, Min, min } from 'class-validator';
 
 @Entity({ name: 'Products' })
 export class Product {
-  @PrimaryGeneratedColumn({ name: 'Id' , type: 'int'})
+  @PrimaryGeneratedColumn({ name: 'Id', type: 'int' })
   id: number;
 
   // ----------------------------------------------------------------------------------------------
@@ -26,7 +26,7 @@ export class Product {
   // ----------------------------------------------------------------------------------------------
   // DISCOUNT
   // ----------------------------------------------------------------------------------------------
-  @Column({ name: 'Discount', type: 'decimal', precision: 18, scale: 2, default: 0 })
+  @Column({ name: 'Discount', type: 'int', default: 0 })
   @Min(0)
   @Max(90)
   discount: number;
@@ -34,7 +34,7 @@ export class Product {
   // ----------------------------------------------------------------------------------------------
   // STOCK
   // ----------------------------------------------------------------------------------------------
-  @Column({ name: 'Stock', type: 'decimal', precision: 18, scale: 2, default: 0 })
+  @Column({ name: 'Stock', type: 'int', default: 0 })
   stock: number;
 
   // ----------------------------------------------------------------------------------------------
@@ -46,38 +46,24 @@ export class Product {
 
   // ----------------------------------------------------------------------------------------------
 
-   // IMAGE
+  // IMAGE
   // ----------------------------------------------------------------------------------------------
   @Column({ type: 'text', nullable: true })
   imageUrls: string[];
-  
+
   @Column({ name: 'CoverImageUrl', type: 'varchar', length: 500, nullable: true })
   coverImageUrl: string;
 
   // CATEGORY ID
   // ----------------------------------------------------------------------------------------------
-  @Column({ type: 'int' , nullable: true  })
+  @Column({ type: 'int', nullable: true })
   categoryId: number;
 
   // ----------------------------------------------------------------------------------------------
   // SUPPLIER ID
   // ----------------------------------------------------------------------------------------------
-  @Column({ type: 'int' , nullable: true })
+  @Column({ type: 'int', nullable: true })
   supplierId: number;
-
-  
-  @CreateDateColumn({ name: 'CreatedAt', type: 'datetime' })
-  createdAt: Date;
-
-  @Column({ name: 'CreatedBy', type: 'varchar', length: 100, nullable: true })
-  createdBy: string;
-
-  @UpdateDateColumn({ name: 'UpdatedAt', type: 'datetime' })
-  updatedAt: Date;
-
-  @Column({ name: 'UpdatedBy', type: 'varchar', length: 100, nullable: true })
-  updatedBy: string;
- 
 
   // ----------------------------------------------------------------------------------------------
   // RELATIONS
