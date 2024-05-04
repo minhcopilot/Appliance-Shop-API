@@ -6,6 +6,7 @@ import { fileUpload } from '../fileUpload';
 import { urlGenerate } from '../../utils/urlGenerate';
 import { uploadSingle } from '../../utils/upload';
 import multer from 'multer';
+import { allowRoles } from '../../middlewares/verifyRoles';
 export const PostCategoriesRouter = express.Router();
 
 //Client get all post categories
@@ -19,7 +20,7 @@ PostCategoriesRouter.get('/', async (req: Request, res: Response, next: NextFunc
 });
 
 //Admin get all post categories
-PostCategoriesRouter.get('/all', async (req: Request, res: Response, next: NextFunction) => {
+PostCategoriesRouter.get('/all', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     res.json(await PostCategory.find().lean({ virtuals: true }).populate(['postCount', 'parentCategory']));
   } catch (error) {
@@ -41,7 +42,7 @@ PostCategoriesRouter.get('/:url', async (req: Request, res: Response, next: Next
 });
 
 //Admin get post category by url
-PostCategoriesRouter.get('/all/:url', async (req: Request, res: Response, next: NextFunction) => {
+PostCategoriesRouter.get('/all/:url', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   const url = req.params.url;
   try {
     let categoryData = await PostCategory.findOne({ url }).lean({ virtuals: true }).populate(['postCount', 'parentCategory']);
@@ -53,7 +54,7 @@ PostCategoriesRouter.get('/all/:url', async (req: Request, res: Response, next: 
 });
 
 //Admin check unique, return array of not unique fields
-PostCategoriesRouter.post('/check-unique', async (req, res) => {
+PostCategoriesRouter.post('/check-unique/', allowRoles('R1', 'R3'), async (req, res) => {
   const body = req.body;
   let uniqueError = [];
   for (const key in body) {
@@ -72,8 +73,28 @@ PostCategoriesRouter.post('/check-unique', async (req, res) => {
   return res.json(uniqueError);
 });
 
+PostCategoriesRouter.post('/check-unique/:id', allowRoles('R1', 'R3'), async (req, res) => {
+  const body = req.body;
+  const id = req.params.id;
+  let uniqueError = [];
+  for (const key in body) {
+    if (key in postCategorySchema.fields) {
+      try {
+        let isUnique = await checkUnique(PostCategory, body, key, id);
+        !isUnique && uniqueError.push(key);
+      } catch (error) {
+        console.log(error);
+        return res.sendStatus(500);
+      }
+    } else {
+      return res.status(400).json({ message: `'${key}' is invalid Post Category field` });
+    }
+  }
+  return res.json(uniqueError);
+});
+
 //Admin create post category
-PostCategoriesRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
+PostCategoriesRouter.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { file, ...body } = req.body;
     await validateSchema(postCategorySchema, body);
@@ -104,7 +125,7 @@ PostCategoriesRouter.post('/', async (req: Request, res: Response, next: NextFun
 });
 
 //Admin delete post category by id
-PostCategoriesRouter.delete('/:id', async (req: Request, res: Response) => {
+PostCategoriesRouter.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
   const id = req.params.id;
   try {
     let idData = await PostCategory.findByIdAndDelete(id);
@@ -115,7 +136,7 @@ PostCategoriesRouter.delete('/:id', async (req: Request, res: Response) => {
 });
 
 //Admin update post category by id
-PostCategoriesRouter.patch('/:id', async (req, res) => {
+PostCategoriesRouter.patch('/:id', allowRoles('R1', 'R3'), async (req, res) => {
   const id = req.params.id;
   const { file, ...body } = req.body;
   let inputError = [];
@@ -132,7 +153,7 @@ PostCategoriesRouter.patch('/:id', async (req, res) => {
     return res.status(400).json({ message: inputError.toString() });
   }
   try {
-    let isUnique = await checkUnique(PostCategory, body, 'title');
+    let isUnique = await checkUnique(PostCategory, body, 'title', id);
     if (!isUnique) {
       return res.status(400).json({ message: 'title must be unique' });
     }
@@ -156,7 +177,7 @@ PostCategoriesRouter.patch('/:id', async (req, res) => {
 });
 
 //Admin upload image to post category by id
-PostCategoriesRouter.post('/:id/upload', async (req, res) => {
+PostCategoriesRouter.post('/:id/upload', allowRoles('R1', 'R3'), async (req, res) => {
   const id = req.params.id;
   try {
     let found = await PostCategory.findById(id);
@@ -172,9 +193,9 @@ PostCategoriesRouter.post('/:id/upload', async (req, res) => {
       } else {
         const UPLOAD_DIR = process.env.UPLOAD_DIR;
         const patchData = {
-          imageUrl: `/${UPLOAD_DIR}/postcategory/${found.url}/${req.body.file?.file}`,
+          imageUrl: `/${UPLOAD_DIR}/postcategory/${found.id}/${req.body.file?.file}`,
         };
-        const publicUrl = `${req.protocol}://${req.get('host')}/${UPLOAD_DIR}/postcategory/${found.url}/${req.body.file?.filename}`;
+        const publicUrl = `${req.protocol}://${req.get('host')}/${UPLOAD_DIR}/postcategory/${found.id}/${req.body.file?.filename}`;
         try {
           await found?.updateOne(patchData);
           return res.json({ message: 'File uploaded successfully', publicUrl });

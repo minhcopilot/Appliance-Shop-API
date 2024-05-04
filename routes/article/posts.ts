@@ -7,6 +7,7 @@ import { uploadSingle } from '../../utils/upload';
 import multer from 'multer';
 import { Post, postSchema } from '../../entities/post.model';
 import { Comment, commentSchema } from '../../entities/comment.model';
+import { allowRoles } from '../../middlewares/verifyRoles';
 export const PostsRouter = express.Router();
 
 // Client get all post
@@ -20,7 +21,7 @@ PostsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => 
 });
 
 // Admin get all posts
-PostsRouter.get('/all', async (req: Request, res: Response, next: NextFunction) => {
+PostsRouter.get('/all', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     res.json(await Post.find().lean({ virtuals: true }).populate(['commentsCount', 'category']));
   } catch (error) {
@@ -49,7 +50,7 @@ PostsRouter.get('/search/:searchString', async (req: Request, res: Response) => 
 });
 
 //Admin post search
-PostsRouter.get('/search/query', async (req: Request, res: Response) => {
+PostsRouter.get('/search/query', allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
   let query: { [index: string]: any } = {};
   for (var queryKey in req.query) {
     if (queryKey in postSchema.fields)
@@ -84,7 +85,7 @@ PostsRouter.get('/:url', async (req: Request, res: Response, next: NextFunction)
 });
 
 //Admin get post by url or id
-PostsRouter.get('/all/:url', async (req: Request, res: Response, next: NextFunction) => {
+PostsRouter.get('/all/:url', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   const url = req.params.url;
   try {
     let postData = await Post.findOne({ $or: [{ _id: url }, { url: url }] })
@@ -126,7 +127,7 @@ PostsRouter.get('/:url/comments', async (req: Request, res: Response, next: Next
 });
 
 //Admin get post comments
-PostsRouter.get('/:url/comments/all', async (req: Request, res: Response, next: NextFunction) => {
+PostsRouter.get('/:url/comments/all', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   const url = req.params.url;
   try {
     let lookupPost = {
@@ -198,7 +199,7 @@ PostsRouter.post('/:url/like', async (req: Request, res: Response) => {
 });
 
 //Admin check unique
-PostsRouter.post('/check-unique', async (req, res) => {
+PostsRouter.post('/check-unique', allowRoles('R1', 'R3'), async (req, res) => {
   const body = req.body;
   let uniqueError = [];
   for (const key in body) {
@@ -211,14 +212,34 @@ PostsRouter.post('/check-unique', async (req, res) => {
         return res.sendStatus(500);
       }
     } else {
-      return res.status(400).json({ message: `'${key}' is invalid Post Post field` });
+      return res.status(400).json({ message: `'${key}' is invalid Post field` });
+    }
+  }
+  return res.json(uniqueError);
+});
+
+PostsRouter.post('/check-unique/:id', allowRoles('R1', 'R3'), async (req, res) => {
+  const body = req.body;
+  const id = req.params.id;
+  let uniqueError = [];
+  for (const key in body) {
+    if (key in postSchema.fields) {
+      try {
+        let isUnique = await checkUnique(Post, body, key, id);
+        !isUnique && uniqueError.push(key);
+      } catch (error) {
+        console.log(error);
+        return res.sendStatus(500);
+      }
+    } else {
+      return res.status(400).json({ message: `'${key}' is invalid Post field` });
     }
   }
   return res.json(uniqueError);
 });
 
 // Admin post create
-PostsRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
+PostsRouter.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { file, ...body } = req.body;
     await validateSchema(postSchema, body);
@@ -250,7 +271,7 @@ PostsRouter.post('/', async (req: Request, res: Response, next: NextFunction) =>
 });
 
 //Admin post delete
-PostsRouter.delete('/all/:url', async (req: Request, res: Response) => {
+PostsRouter.delete('/all/:url', allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
   const url = req.params.url;
   try {
     let idData = await Post.findOneAndDelete({ $or: [{ _id: url }, { url: url }] });
@@ -261,8 +282,8 @@ PostsRouter.delete('/all/:url', async (req: Request, res: Response) => {
 });
 
 //Admin post update
-PostsRouter.patch('/all/:url', async (req, res) => {
-  const url = req.params.url;
+PostsRouter.patch('/all/:id', allowRoles('R1', 'R3'), async (req, res) => {
+  const id = req.params.id;
   const { file, ...body } = req.body;
   let inputError = [];
   for (const key in body) {
@@ -278,13 +299,13 @@ PostsRouter.patch('/all/:url', async (req, res) => {
     return res.status(400).json({ message: inputError.toString() });
   }
   try {
-    let isUnique = await checkUnique(Post, body, 'title');
+    let isUnique = await checkUnique(Post, body, 'title', id);
     if (!isUnique) {
       return res.status(400).json({ message: 'title must be unique' });
     }
     try {
       body.title && (body.url = urlGenerate(body.title));
-      let idData = await Post.findOneAndUpdate({ $or: [{ _id: url }, { url: url }] }, body);
+      let idData = await Post.findOneAndUpdate({ $or: [{ _id: id }, { url: id }] }, body);
       if (idData) {
         if (req.body.file) {
           console.log(req.body.file[0]);
@@ -303,14 +324,14 @@ PostsRouter.patch('/all/:url', async (req, res) => {
 });
 
 //Admin post upload image
-PostsRouter.post('/:url/upload', async (req, res) => {
-  const url = req.params.url;
+PostsRouter.post('/:id/upload', allowRoles('R1', 'R3'), async (req, res) => {
+  const id = req.params.id;
   try {
-    let found = await Post.findOne({ url });
+    let found = await Post.findOne({ id });
     if (!found) {
       return res.status(404).json({ message: `Couldn't find that Post Post id` });
     }
-    req.params = { ...req.params, collectionName: 'post' } as { url: string; collectionName: string };
+    req.params = { ...req.params, collectionName: 'post' } as { id: string; collectionName: string };
     uploadSingle(req, res, async (error: any) => {
       if (error instanceof multer.MulterError) {
         return res.status(500).json({ type: 'MulterError', message: error.message });
@@ -319,9 +340,9 @@ PostsRouter.post('/:url/upload', async (req, res) => {
       } else {
         const UPLOAD_DIR = process.env.UPLOAD_DIR;
         const patchData = {
-          imageUrl: `/${UPLOAD_DIR}/posts/${url}/${req.body.file?.filename}`,
+          imageUrl: `/${UPLOAD_DIR}/posts/${id}/${req.body.file?.filename}`,
         };
-        const publicUrl = `${req.protocol}://${req.get('host')}/${UPLOAD_DIR}/posts/${url}/${req.body.file?.filename}`;
+        const publicUrl = `${req.protocol}://${req.get('host')}/${UPLOAD_DIR}/posts/${id}/${req.body.file?.filename}`;
         try {
           await found?.updateOne(patchData);
           return res.json({ message: 'File uploaded successfully', publicUrl });

@@ -1,10 +1,11 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { validateSchemaByField } from '../../utils/validateSchema';
 import { Comment, commentSchema } from '../../entities/comment.model';
+import { allowRoles } from '../../middlewares/verifyRoles';
 export const CommentsRouter = express.Router();
 
 //Admin comment search
-CommentsRouter.get('/search/query', async (req: Request, res: Response) => {
+CommentsRouter.get('/search/query', allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
   let query: { [index: string]: any } = {};
   for (var queryKey in req.query) {
     if (queryKey in commentSchema.fields)
@@ -27,7 +28,7 @@ CommentsRouter.get('/search/query', async (req: Request, res: Response) => {
 });
 
 //Admin update comment by id
-CommentsRouter.patch('/:id', async (req: Request, res: Response, next: NextFunction) => {
+CommentsRouter.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   const id = req.params.id;
   let inputError = [];
   for (const key in req.body) {
@@ -53,7 +54,7 @@ CommentsRouter.patch('/:id', async (req: Request, res: Response, next: NextFunct
 });
 
 //Admin delete comment by id
-CommentsRouter.delete('/:id', async (req: Request, res: Response) => {
+CommentsRouter.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
   const id = req.params.id;
   try {
     let idData = await Comment.findByIdAndDelete(id);

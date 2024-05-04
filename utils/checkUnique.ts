@@ -1,9 +1,9 @@
 import { Model, Document } from 'mongoose';
 import { excludeKeywords } from '../constants/excludeKeywords';
 
-export const checkUnique = async (data: Model<any, any, any, any, any, any>, body: any, key: string) => {
+export const checkUnique = async (data: Model<any, any, any, any, any, any>, body: any, key: string, id?: string) => {
   try {
-    let found = await data.findOne({ [key]: body[key] }).lean();
+    let found = await data.findOne({ $and: [{ [key]: body[key] }, { _id: { $ne: id } }] }).lean();
     if (found || excludeKeywords.includes(body[key])) {
       return false;
     } else {
@@ -13,4 +13,3 @@ export const checkUnique = async (data: Model<any, any, any, any, any, any>, bod
     console.log(error);
   }
 };
-
