@@ -7,7 +7,11 @@ import { urlGenerate } from '../../utils/urlGenerate';
 import { uploadSingle } from '../../utils/upload';
 import multer from 'multer';
 import { allowRoles } from '../../middlewares/verifyRoles';
+import passport from 'passport';
+const { passportConfigAdmin } = require('../../middlewares/passportAdmin');
 export const PostCategoriesRouter = express.Router();
+
+passport.use('admin', passportConfigAdmin);
 
 //Client get all post categories
 PostCategoriesRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
@@ -20,14 +24,19 @@ PostCategoriesRouter.get('/', async (req: Request, res: Response, next: NextFunc
 });
 
 //Admin get all post categories
-PostCategoriesRouter.get('/all', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    res.json(await PostCategory.find().lean({ virtuals: true }).populate(['postCount', 'parentCategory']));
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: 'Database Error' });
-  }
-});
+PostCategoriesRouter.get(
+  '/all',
+  passport.authenticate('admin', { session: false }),
+  allowRoles('R1', 'R3'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json(await PostCategory.find().lean({ virtuals: true }).populate(['postCount', 'parentCategory']));
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: 'Database Error' });
+    }
+  },
+);
 
 //Client get post category by url
 PostCategoriesRouter.get('/:url', async (req: Request, res: Response, next: NextFunction) => {
@@ -42,19 +51,24 @@ PostCategoriesRouter.get('/:url', async (req: Request, res: Response, next: Next
 });
 
 //Admin get post category by url
-PostCategoriesRouter.get('/all/:url', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
-  const url = req.params.url;
-  try {
-    let categoryData = await PostCategory.findOne({ url }).lean({ virtuals: true }).populate(['postCount', 'parentCategory']);
-    categoryData ? res.json(categoryData) : res.status(404).json({ message: `Couldn't find that category` });
-  } catch (error: any) {
-    console.log(error);
-    res.status(500).json({ message: 'Database Error' });
-  }
-});
+PostCategoriesRouter.get(
+  '/all/:url',
+  passport.authenticate('admin', { session: false }),
+  allowRoles('R1', 'R3'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const url = req.params.url;
+    try {
+      let categoryData = await PostCategory.findOne({ url }).lean({ virtuals: true }).populate(['postCount', 'parentCategory']);
+      categoryData ? res.json(categoryData) : res.status(404).json({ message: `Couldn't find that category` });
+    } catch (error: any) {
+      console.log(error);
+      res.status(500).json({ message: 'Database Error' });
+    }
+  },
+);
 
 //Admin check unique, return array of not unique fields
-PostCategoriesRouter.post('/check-unique/', allowRoles('R1', 'R3'), async (req, res) => {
+PostCategoriesRouter.post('/check-unique/', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req, res) => {
   const body = req.body;
   let uniqueError = [];
   for (const key in body) {
@@ -94,38 +108,43 @@ PostCategoriesRouter.post('/check-unique/:id', allowRoles('R1', 'R3'), async (re
 });
 
 //Admin create post category
-PostCategoriesRouter.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { file, ...body } = req.body;
-    await validateSchema(postCategorySchema, body);
+PostCategoriesRouter.post(
+  '/all',
+  passport.authenticate('admin', { session: false }),
+  allowRoles('R1', 'R3'),
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      let isUnique = await checkUnique(PostCategory, body, 'title');
-      if (!isUnique) {
-        return res.status(400).json({ message: 'title must be unique' });
-      }
-      const newItem = new PostCategory({ ...body, url: urlGenerate(body.title) });
+      const { file, ...body } = req.body;
+      await validateSchema(postCategorySchema, body);
       try {
-        let result = await newItem.save();
-        // if (file) {
-        //   let found = await fileUpload(result._id, req, res, PostCategory);
-        // }
-        return res.status(201).json(result);
+        let isUnique = await checkUnique(PostCategory, body, 'title');
+        if (!isUnique) {
+          return res.status(400).json({ message: 'title must be unique' });
+        }
+        const newItem = new PostCategory({ ...body, url: urlGenerate(body.title) });
+        try {
+          let result = await newItem.save();
+          // if (file) {
+          //   let found = await fileUpload(result._id, req, res, PostCategory);
+          // }
+          return res.status(201).json(result);
+        } catch (error) {
+          console.log(error);
+          return res.status(500).json({ message: 'Database Error' });
+        }
       } catch (error) {
         console.log(error);
-        return res.status(500).json({ message: 'Database Error' });
+        return res.sendStatus(500);
       }
-    } catch (error) {
-      console.log(error);
-      return res.sendStatus(500);
+    } catch (error: any) {
+      console.log(error.message);
+      res.status(400).json({ message: error.errors?.toString() });
     }
-  } catch (error: any) {
-    console.log(error.message);
-    res.status(400).json({ message: error.errors?.toString() });
-  }
-});
+  },
+);
 
 //Admin delete post category by id
-PostCategoriesRouter.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
+PostCategoriesRouter.delete('/all/:id', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
   const id = req.params.id;
   try {
     let idData = await PostCategory.findByIdAndDelete(id);
@@ -136,7 +155,7 @@ PostCategoriesRouter.delete('/:id', allowRoles('R1', 'R3'), async (req: Request,
 });
 
 //Admin update post category by id
-PostCategoriesRouter.patch('/:id', allowRoles('R1', 'R3'), async (req, res) => {
+PostCategoriesRouter.patch('/all/:id', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req, res) => {
   const id = req.params.id;
   const { file, ...body } = req.body;
   let inputError = [];
@@ -177,7 +196,7 @@ PostCategoriesRouter.patch('/:id', allowRoles('R1', 'R3'), async (req, res) => {
 });
 
 //Admin upload image to post category by id
-PostCategoriesRouter.post('/:id/upload', allowRoles('R1', 'R3'), async (req, res) => {
+PostCategoriesRouter.post('/all/:id/upload', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req, res) => {
   const id = req.params.id;
   try {
     let found = await PostCategory.findById(id);

@@ -8,7 +8,11 @@ import multer from 'multer';
 import { Post, postSchema } from '../../entities/post.model';
 import { Comment, commentSchema } from '../../entities/comment.model';
 import { allowRoles } from '../../middlewares/verifyRoles';
+import passport from 'passport';
+const { passportConfigAdmin } = require('../../middlewares/passportAdmin');
 export const PostsRouter = express.Router();
+
+passport.use('admin', passportConfigAdmin);
 
 // Client get all post
 PostsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
@@ -21,7 +25,7 @@ PostsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => 
 });
 
 // Admin get all posts
-PostsRouter.get('/all', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
+PostsRouter.get('/all', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     res.json(await Post.find().lean({ virtuals: true }).populate(['commentsCount', 'category']));
   } catch (error) {
@@ -34,41 +38,43 @@ PostsRouter.get('/all', allowRoles('R1', 'R3'), async (req: Request, res: Respon
 PostsRouter.get('/search/:searchString', async (req: Request, res: Response) => {
   const searchString = req.params.searchString;
   let query = {
-    $or: [
-      { title: { $regex: searchString, $options: 'i' } },
-      { content: { $regex: searchString, $options: 'i' } },
-      { authorName: { $regex: searchString, $options: 'i' } },
+    $and: [
+      {
+        $or: [
+          { title: { $regex: searchString, $options: 'i' } },
+          { content: { $regex: searchString, $options: 'i' } },
+          { authorName: { $regex: searchString, $options: 'i' } },
+        ],
+      },
       { status: 'published' },
     ],
   };
   try {
     let found = await Post.find(query);
-    found.length > 0 ? res.json(found) : res.status(410).json({ message: `Couldn't find any post like that` });
+    return res.json(found);
   } catch (error) {
-    res.status(500).json({ message: 'Database Error' });
+    return res.status(500).json({ message: 'Database Error' });
   }
 });
 
 //Admin post search
-PostsRouter.get('/search/query', allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
+PostsRouter.get('/all/search/query', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
   let query: { [index: string]: any } = {};
   for (var queryKey in req.query) {
     if (queryKey in postSchema.fields)
       try {
         await validateSchemaByField(postSchema, req.query, queryKey);
-        query[queryKey] = { $regex: req.query[queryKey], $options: 'i' };
+        query[queryKey] = req.query[queryKey];
       } catch (error: any) {
         return res.status(400).json(error.errors);
       }
   }
-  // if (db == "order") {
-  //   query = { ...query, ...(await ordersQuery(req.query)) };
-  // }
   try {
     let found = await Post.find(query);
-    found.length > 0 ? res.json(found) : res.status(410).json({ message: `Couldn't find any post like that` });
+    return res.json(found);
   } catch (error) {
-    res.status(500).json({ message: 'Database Error' });
+    console.log(error);
+    return res.status(500).json({ message: 'Database Error' });
   }
 });
 
@@ -85,19 +91,24 @@ PostsRouter.get('/:url', async (req: Request, res: Response, next: NextFunction)
 });
 
 //Admin get post by url or id
-PostsRouter.get('/all/:url', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
-  const url = req.params.url;
-  try {
-    let postData = await Post.findOne({ $or: [{ _id: url }, { url: url }] })
-      .lean({ virtuals: true })
-      .populate(['commentsCount', 'category']);
+PostsRouter.get(
+  '/all/:url',
+  passport.authenticate('admin', { session: false }),
+  allowRoles('R1', 'R3'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const url = req.params.url;
+    try {
+      let postData = await Post.findOne({ $or: [{ _id: url }, { url: url }] })
+        .lean({ virtuals: true })
+        .populate(['commentsCount', 'category']);
 
-    postData ? res.json(postData) : res.status(404).json({ message: `Couldn't find that post` });
-  } catch (error: any) {
-    console.log(error);
-    res.status(500).json({ message: 'Database Error' });
-  }
-});
+      postData ? res.json(postData) : res.status(404).json({ message: `Couldn't find that post` });
+    } catch (error: any) {
+      console.log(error);
+      res.status(500).json({ message: 'Database Error' });
+    }
+  },
+);
 
 //Client get post comments
 PostsRouter.get('/:url/comments', async (req: Request, res: Response, next: NextFunction) => {
@@ -127,29 +138,36 @@ PostsRouter.get('/:url/comments', async (req: Request, res: Response, next: Next
 });
 
 //Admin get post comments
-PostsRouter.get('/:url/comments/all', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
-  const url = req.params.url;
-  try {
-    let lookupPost = {
-      $lookup: {
-        from: 'posts',
-        localField: 'postId',
-        foreignField: '_id',
-        pipeline: [
-          {
-            $project: { url: 1 },
-          },
-        ],
-        as: 'posts',
-      },
-    };
-    let found = await Comment.aggregate([lookupPost, { $unwind: '$posts' }, { $match: { 'posts.url': url } }]).project({ posts: 0 });
-    res.json(found);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: 'Database Error' });
-  }
-});
+PostsRouter.get(
+  '/all/:url/comments',
+  passport.authenticate('admin', { session: false }),
+  allowRoles('R1', 'R3'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const url = req.params.url;
+    try {
+      let lookupPost = {
+        $lookup: {
+          from: 'posts',
+          localField: 'postId',
+          foreignField: '_id',
+          pipeline: [
+            {
+              $project: { url: 1 },
+            },
+          ],
+          as: 'posts',
+        },
+      };
+      let found = await Comment.aggregate([lookupPost, { $unwind: '$posts' }, { $match: { $or: [{ 'posts.url': url }, { postId: url }] } }]).project({
+        posts: 0,
+      });
+      res.json(found);
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: 'Database Error' });
+    }
+  },
+);
 
 //Client post comment
 PostsRouter.post('/:url/comments', async (req: Request, res: Response, next: NextFunction) => {
@@ -199,7 +217,7 @@ PostsRouter.post('/:url/like', async (req: Request, res: Response) => {
 });
 
 //Admin check unique
-PostsRouter.post('/check-unique', allowRoles('R1', 'R3'), async (req, res) => {
+PostsRouter.post('/check-unique', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req, res) => {
   const body = req.body;
   let uniqueError = [];
   for (const key in body) {
@@ -239,39 +257,44 @@ PostsRouter.post('/check-unique/:id', allowRoles('R1', 'R3'), async (req, res) =
 });
 
 // Admin post create
-PostsRouter.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { file, ...body } = req.body;
-    await validateSchema(postSchema, body);
+PostsRouter.post(
+  '/all/',
+  passport.authenticate('admin', { session: false }),
+  allowRoles('R1', 'R3'),
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      let isUnique = await checkUnique(Post, body, 'title');
-      if (!isUnique) {
-        return res.status(400).json({ message: 'title must be unique' });
-      }
-      const newItem = new Post({ ...body, url: urlGenerate(body.title) });
+      const { file, ...body } = req.body;
+      await validateSchema(postSchema, body);
       try {
-        let result = await newItem.save();
-        if (file) {
-          let found = await fileUpload(result._id, req, res, Post);
-          return res.status(201).json(found);
+        let isUnique = await checkUnique(Post, body, 'title');
+        if (!isUnique) {
+          return res.status(400).json({ message: 'title must be unique' });
         }
-        return res.status(201).json(result);
+        const newItem = new Post({ ...body, url: urlGenerate(body.title) });
+        try {
+          let result = await newItem.save();
+          if (file) {
+            let found = await fileUpload(result._id, req, res, Post);
+            return res.status(201).json(found);
+          }
+          return res.status(201).json(result);
+        } catch (error) {
+          console.log(error);
+          return res.status(500).json({ message: 'Database Error' });
+        }
       } catch (error) {
         console.log(error);
-        return res.status(500).json({ message: 'Database Error' });
+        return res.sendStatus(500);
       }
-    } catch (error) {
-      console.log(error);
-      return res.sendStatus(500);
+    } catch (error: any) {
+      console.log(error.message);
+      res.status(400).json({ message: error.errors?.toString() });
     }
-  } catch (error: any) {
-    console.log(error.message);
-    res.status(400).json({ message: error.errors?.toString() });
-  }
-});
+  },
+);
 
 //Admin post delete
-PostsRouter.delete('/all/:url', allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
+PostsRouter.delete('/all/:url', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
   const url = req.params.url;
   try {
     let idData = await Post.findOneAndDelete({ $or: [{ _id: url }, { url: url }] });
@@ -282,7 +305,7 @@ PostsRouter.delete('/all/:url', allowRoles('R1', 'R3'), async (req: Request, res
 });
 
 //Admin post update
-PostsRouter.patch('/all/:id', allowRoles('R1', 'R3'), async (req, res) => {
+PostsRouter.patch('/all/:id', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req, res) => {
   const id = req.params.id;
   const { file, ...body } = req.body;
   let inputError = [];
@@ -324,7 +347,7 @@ PostsRouter.patch('/all/:id', allowRoles('R1', 'R3'), async (req, res) => {
 });
 
 //Admin post upload image
-PostsRouter.post('/:id/upload', allowRoles('R1', 'R3'), async (req, res) => {
+PostsRouter.post('/all/:id/upload', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req, res) => {
   const id = req.params.id;
   try {
     let found = await Post.findOne({ id });

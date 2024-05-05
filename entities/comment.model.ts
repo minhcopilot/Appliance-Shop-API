@@ -1,5 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { Schema, model } from 'mongoose';
+import mongooseLeanVirtuals from 'mongoose-lean-virtuals';
 import * as yup from 'yup';
 
 export const commentSchema = yup.object().shape({
@@ -49,5 +50,16 @@ const commentDbSchema = new Schema<Comment>(
   },
   { versionKey: false, timestamps: true },
 );
+
+commentDbSchema.virtual('post', {
+  ref: 'Post',
+  localField: 'postId',
+  foreignField: '_id',
+  justOne: true,
+});
+
+commentDbSchema.plugin(mongooseLeanVirtuals);
+commentDbSchema.set('toObject', { virtuals: true });
+commentDbSchema.set('toJSON', { virtuals: true });
 
 export const Comment = model('Comment', commentDbSchema);
