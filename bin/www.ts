@@ -25,11 +25,12 @@ const server = http.createServer(app);
  * Socket.io
  */
 
-import { Server } from 'socket.io';
-import { chatStart } from '../socket/chatStart';
+import { Server, Socket } from 'socket.io';
 import passport from 'passport';
-import { passportVerifyToken } from '../middlewares/passport';
 import { NextFunction } from 'express';
+import { passportSocketVerifyToken } from '../middlewares/passportSocket';
+const AnonymousStrategy = require('passport-anonymous').Strategy;
+import { chatHandler } from '../socket/chat/chatHandler';
 const io = new Server(server, {
   cors: {
     origin: true,
@@ -38,28 +39,23 @@ const io = new Server(server, {
 });
 
 //Use JWT Auth Middleware
-passport.use('jwt', passportVerifyToken);
+passport.use('socket', passportSocketVerifyToken);
+passport.use(new AnonymousStrategy());
 io.engine.use((req: any, res: Response, next: NextFunction) => {
   const isHandshake = req._query.sid === undefined;
   if (isHandshake) {
-    passport.authenticate('jwt', { session: false })(req, res, next);
+    passport.authenticate(['socket', 'anonymous'], { session: false })(req, res, next);
   } else {
     next();
   }
 });
 
+const onConnection = (socket: Socket) => {
+  chatHandler(io, socket);
+};
+
 io.on('connection', (socket) => {
-  console.log('a user connected');
-  console.log(socket.request);
-  socket.on('client-message', (msg) => {
-    console.log('message: ' + msg);
-    if (msg.type === 'start') {
-      chatStart(socket, io);
-    }
-  });
-  socket.on('disconnect', () => {
-    console.log('user disconnected');
-  });
+  onConnection(socket);
 });
 
 /**

@@ -217,7 +217,7 @@ PostsRouter.post('/:url/like', async (req: Request, res: Response) => {
 });
 
 //Admin check unique
-PostsRouter.post('/check-unique', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req, res) => {
+PostsRouter.post('/check-unique', async (req, res) => {
   const body = req.body;
   let uniqueError = [];
   for (const key in body) {
@@ -236,7 +236,7 @@ PostsRouter.post('/check-unique', passport.authenticate('admin', { session: fals
   return res.json(uniqueError);
 });
 
-PostsRouter.post('/check-unique/:id', allowRoles('R1', 'R3'), async (req, res) => {
+PostsRouter.post('/check-unique/:id', async (req, res) => {
   const body = req.body;
   const id = req.params.id;
   let uniqueError = [];

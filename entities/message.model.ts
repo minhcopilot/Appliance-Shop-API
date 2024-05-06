@@ -7,7 +7,7 @@ const messageSchema = yup.object().shape({
   type: yup.string().required().oneOf(['order', 'product', 'text', 'image']),
   replyTo: yup.string().nullable(),
   sender: yup.string().required().oneOf(['customer', 'employee']),
-  status: yup.string().required().oneOf(['sent', 'seen', 'deleted']),
+  status: yup.string().required().oneOf(['sent', 'seen', 'deleted']).default('sent'),
   content: yup.string().required(),
   editHistory: yup.array(yup.string()).nullable(),
 });

@@ -68,7 +68,7 @@ PostCategoriesRouter.get(
 );
 
 //Admin check unique, return array of not unique fields
-PostCategoriesRouter.post('/check-unique/', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req, res) => {
+PostCategoriesRouter.post('/check-unique/', async (req, res) => {
   const body = req.body;
   let uniqueError = [];
   for (const key in body) {
@@ -87,7 +87,7 @@ PostCategoriesRouter.post('/check-unique/', passport.authenticate('admin', { ses
   return res.json(uniqueError);
 });
 
-PostCategoriesRouter.post('/check-unique/:id', allowRoles('R1', 'R3'), async (req, res) => {
+PostCategoriesRouter.post('/check-unique/:id', async (req, res) => {
   const body = req.body;
   const id = req.params.id;
   let uniqueError = [];

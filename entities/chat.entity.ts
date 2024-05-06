@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, UpdateDateColumn } from 'typeorm';
 import { Customer } from './customer.entity';
 import { Employee } from './employee.entity';
 
@@ -7,6 +7,9 @@ export class Chat {
   @PrimaryGeneratedColumn({ name: 'Id' })
   id: number;
 
+  @Column({ name: 'customerName', type: 'nvarchar', nullable: true })
+  customerName: string;
+
   @Column({ type: 'int', nullable: true })
   customerId: number;
 
@@ -14,9 +17,9 @@ export class Chat {
   employeeId: number;
 
   @Column({ name: 'IsFinished', type: 'boolean', default: false })
-  isFinished: number;
+  isFinished: boolean;
 
-  @Column({ name: 'LastUpdated', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn({ name: 'LastUpdated', type: 'datetime' })
   lastUpdated: Date;
 
   @ManyToOne(() => Customer, (customer) => customer.chats)

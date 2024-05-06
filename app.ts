@@ -10,6 +10,7 @@ import indexRouter from './routes/routes';
 import adminRoutes from './routes/admin/routes';
 import userRouter from './routes/user/routes';
 import { articleRouter } from './routes/article/routes';
+import { ChatRouter } from './routes/chat';
 import mongoose from 'mongoose';
 
 //MongoDB connection with initial retry
@@ -51,6 +52,7 @@ AppDataSource.initialize().then(async () => {
   app.use('/admin', adminRoutes);
   app.use('/user', userRouter);
   app.use('/article', articleRouter);
+  app.use('/chat', ChatRouter);
 
   // catch 404 and forward to error handler
   app.use(function (req: Request, res: Response, next: NextFunction) {
