@@ -52,7 +52,7 @@ router.get('/', async (req: Request, res: Response, next: any) => {
       res.status(200).json(orders);
     }
   } catch (error: any) {
-    res.status(500).json({ error: 'Internal server error', errors: error });
+    res.status(500).json({ message: 'Internal server error', errors: error });
   }
 });
 
@@ -96,7 +96,7 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
       res.sendStatus(204);
     }
   } catch (error: any) {
-    res.status(500).json({ error: 'Internal server error', errors: error });
+    res.status(500).json({ message: 'Internal server error', errors: error });
   }
 });
 
@@ -132,7 +132,7 @@ router.post('/', async (req: Request, res: Response) => {
     res.status(201).json(savedOrder);
   } catch (error) {
     console.log('««««« error »»»»»', error);
-    res.status(500).json({ error: 'Đã xảy ra lỗi khi tạo đơn hàng mới.' });
+    res.status(500).json({ message: 'Đã xảy ra lỗi khi tạo đơn hàng mới.' });
   }
 });
 
@@ -144,7 +144,7 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
     // Kiểm tra xem userId có tồn tại trong bảng Customer không
     const customer = await customerRepository.findOne({ where: { id: userId } });
     if (!customer) {
-      return res.status(404).json({ error: 'Không tìm thấy khách hàng.' });
+      return res.status(404).json({ message: 'Không tìm thấy khách hàng.' });
     }
 
     // Lấy danh sách đơn hàng của khách hàng
@@ -155,7 +155,7 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
 
     res.status(200).json(orders);
   } catch (error) {
-    res.status(500).json({ error: 'Đã xảy ra lỗi khi lấy danh sách đơn hàng.' });
+    res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy danh sách đơn hàng.' });
   }
 });
 // update status
@@ -167,7 +167,7 @@ router.patch('/:orderId', async (req: Request, res: Response) => {
     // Tìm đơn hàng theo orderId
     const order = await orderRepository.findOneBy({ id: orderId });
     if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
+      return res.status(404).json({ message: 'Order not found' });
     }
 
     // Cập nhật các trường của đơn hàng
@@ -205,7 +205,6 @@ router.patch('/:orderId', async (req: Request, res: Response) => {
     const updatedOrder = await orderRepository.save(order);
     res.status(200).json(updatedOrder);
   } catch (error: any) {
-    console.log('««««« error »»»»»', error);
     res.status(500).json({ error: 'Failed to update order' });
   }
 });
@@ -217,7 +216,7 @@ router.delete('/:orderId', async (req: Request, res: Response) => {
     // Tìm đơn hàng theo orderId
     const order = await orderRepository.findOneBy({ id: orderId });
     if (!order) {
-      return res.status(404).json({ error: 'Không tìm thấy đơn hàng.' });
+      return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
     }
 
     // Xóa đơn hàng
@@ -225,7 +224,7 @@ router.delete('/:orderId', async (req: Request, res: Response) => {
 
     res.status(200).json({ message: 'Đơn hàng đã được xóa thành công.' });
   } catch (error) {
-    res.status(500).json({ error: 'Đã xảy ra lỗi khi xóa đơn hàng.' });
+    res.status(500).json({ message: 'Đã xảy ra lỗi khi xóa đơn hàng.' });
   }
 });
 export default router;

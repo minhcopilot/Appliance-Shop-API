@@ -119,26 +119,26 @@ export const filesUploadProduct = async (id: any, req: Request, res: Response) =
     }
 
     // Tiếp tục với mã logic của bạn cho việc xử lý upload nhiều file và cập nhật đường dẫn trong cơ sở dữ liệu
-    uploadMultiple(req, res, async (error) => {
-      if (error instanceof multer.MulterError) {
-        res.status(500).json({ type: 'MulterError', message: error.message });
-      } else if (error) {
-        res.status(500).json({ type: 'UnknownError', message: error.message });
-      } else {
-        const UPLOAD_DIR = process.env.UPLOAD_DIR;
-        const PUBLIC_DIR = process.env.PUBLIC_DIR;
-        const patchData: string[] = [];
-        found.imageUrls.forEach((e: string) => {
-          fs.unlink(`${PUBLIC_DIR}/${e}`, (err) => {
-            console.log(err);
-          });
-          patchData.push(`/${UPLOAD_DIR}/product/ImagesUrl/${found.id}/${toSafeFileName(req.body.file.filename)}`);
-        });
-        found.imageUrls = patchData;
-        await repository.save(found);
-        return res.status(200).json(found);
-      }
-    });
+    // uploadMultiple(req, res, async (error) => {
+    //   if (error instanceof multer.MulterError) {
+    //     res.status(500).json({ type: 'MulterError', message: error.message });
+    //   } else if (error) {
+    //     res.status(500).json({ type: 'UnknownError', message: error.message });
+    //   } else {
+    //     const UPLOAD_DIR = process.env.UPLOAD_DIR;
+    //     const PUBLIC_DIR = process.env.PUBLIC_DIR;
+    //     const patchData: string[] = [];
+    //     found.imageUrls.forEach((e: string) => {
+    //       fs.unlink(`${PUBLIC_DIR}/${e}`, (err) => {
+    //         console.log(err);
+    //       });
+    //       patchData.push(`/${UPLOAD_DIR}/product/ImagesUrl/${found.id}/${toSafeFileName(req.body.file.filename)}`);
+    //     });
+    //     found.imageUrls = patchData;
+    //     await repository.save(found);
+    //     return res.status(200).json(found);
+    //   }
+    // });
   } catch (error) {
     return res.status(500).json({ message: 'Database Error' });
   }

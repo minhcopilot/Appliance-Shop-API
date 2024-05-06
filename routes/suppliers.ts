@@ -27,11 +27,11 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
   try {
     const supplier = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!supplier) {
-      return res.status(404).json({ error: 'Not found' });
+      return res.status(404).json({ message: 'Not found' });
     }
     res.status(200).json(supplier);
   } catch (error: any) {
-    res.status(500).json({ error: 'Internal server error', errors: error });
+    res.status(500).json({ message: 'Internal server error', errors: error });
   }
 });
 
@@ -41,14 +41,14 @@ router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, nex
     const { name } = req.body;
     const exitsSupplier = await repository.findOneBy({ name });
     if (exitsSupplier) {
-      return res.status(400).json({ error: 'Supplier already exists' });
+      return res.status(400).json({ message: 'Supplier already exists' });
     }
     const supplier = new Supplier();
     Object.assign(supplier, req.body);
     await repository.save(supplier);
     res.status(201).json(supplier);
   } catch (error: any) {
-    res.status(500).json({ error: 'Internal server error', errors: error });
+    res.status(500).json({ message: 'Internal server error', errors: error });
   }
 });
 
@@ -57,7 +57,7 @@ router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response,
   try {
     const supplier = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!supplier) {
-      return res.status(404).json({ error: 'Not found' });
+      return res.status(404).json({ message: 'Not found' });
     }
 
     Object.assign(supplier, req.body);
@@ -66,7 +66,7 @@ router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response,
     const updatedSupplier = await repository.findOneBy({ id: parseInt(req.params.id) });
     res.status(200).json(updatedSupplier);
   } catch (error: any) {
-    res.status(500).json({ error: 'Internal server error', errors: error });
+    res.status(500).json({ message: 'Internal server error', errors: error });
   }
 });
 
@@ -75,12 +75,12 @@ router.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response
   try {
     const supplier = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!supplier) {
-      return res.status(404).json({ error: 'Not found' });
+      return res.status(404).json({ message: 'Not found' });
     }
     await repository.delete({ id: supplier.id });
     res.status(200).json({ message: 'Deleted supplier successfully' });
   } catch (error: any) {
-    res.status(500).json({ error: 'Internal server error', errors: error });
+    res.status(500).json({ message: 'Internal server error', errors: error });
   }
 });
 
