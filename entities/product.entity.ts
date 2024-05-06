@@ -48,8 +48,8 @@ export class Product {
 
   // IMAGE
   // ----------------------------------------------------------------------------------------------
-  @Column({ type: 'text', nullable: true })
-  imageUrls: string[];
+  @Column({ name: 'ImageUrls', type: 'text', nullable: true })
+  imageUrls: string;
 
   @Column({ name: 'CoverImageUrl', type: 'varchar', length: 500, nullable: true })
   coverImageUrl: string;
