@@ -12,6 +12,7 @@ export const chatAccept = async (socket: any, io: Server, data: socketData) => {
       chat.employeeId = socket.request.user.id;
       await chatRespository.save(chat);
       socket.join(chat.id.toString());
+      console.log(socket.request.user.email + ' joined room ' + chat.id.toString());
       io.to('employees').emit('assigned', { type: 'chat-accepted', message: { customerName: chat.customerName, id: chat.id } });
       console.log('Chat accepted');
     } else {
