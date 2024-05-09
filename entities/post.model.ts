@@ -3,6 +3,13 @@ import { Schema, model } from 'mongoose';
 import mongooseLeanVirtuals from 'mongoose-lean-virtuals';
 import * as yup from 'yup';
 
+const imageUrlSchema = yup.object().shape({
+  url: yup.string().required(),
+  publicId: yup.string().required(),
+  name: yup.string().required(),
+  size: yup.number().required(),
+});
+
 export const postSchema = yup.object().shape({
   type: yup.string().required().max(20).oneOf(['post', 'page']).default('post'),
   postCategoryId: yup
@@ -17,7 +24,7 @@ export const postSchema = yup.object().shape({
   authorId: yup.number(),
   authorName: yup.string().max(100),
   url: yup.string().max(500),
-  imageUrl: yup.string().max(500),
+  imageUrl: imageUrlSchema,
   status: yup.string().max(20).oneOf(['draft', 'published', 'deleted']).default('draft'),
   commentStatus: yup.string().max(20).oneOf(['open', 'closed']).default('open'),
   like: yup.number().default(0),
@@ -27,6 +34,25 @@ export const postSchema = yup.object().shape({
 interface Post extends Omit<yup.InferType<typeof postSchema>, 'postCategoryId'> {
   postCategoryId: ObjectId;
 }
+
+const imageUrlDbSchema = new Schema({
+  url: {
+    type: String,
+    required: true,
+  },
+  publicId: {
+    type: String,
+    required: true,
+  },
+  name: {
+    type: String,
+    required: true,
+  },
+  size: {
+    type: Number,
+    required: true,
+  },
+});
 
 const postDbSchema = new Schema<Post>(
   {
@@ -68,10 +94,7 @@ const postDbSchema = new Schema<Post>(
       maxLength: 500,
       unique: true,
     },
-    imageUrl: {
-      type: String,
-      maxLength: 500,
-    },
+    imageUrl: imageUrlDbSchema,
     status: {
       type: String,
       required: true,
