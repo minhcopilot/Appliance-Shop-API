@@ -2,15 +2,13 @@ import express, { NextFunction, Request, Response } from 'express';
 import { checkUnique } from '../../utils/checkUnique';
 import { validateSchema, validateSchemaByField } from '../../utils/validateSchema';
 import { urlGenerate } from '../../utils/urlGenerate';
-import { uploadSingle } from '../../utils/upload';
-import multer from 'multer';
 import { Post, postSchema } from '../../entities/post.model';
 import { Comment, commentSchema } from '../../entities/comment.model';
 import { allowRoles } from '../../middlewares/verifyRoles';
 import passport from 'passport';
 import { uploadCloud } from '../../middlewares/fileMulter';
 import cloudinary from '../../utils/cloudinary';
-import { ImageUrl } from '../../entities/postImage.model';
+import { ImageUrl, imageUrl } from '../../entities/postImage.model';
 const { passportConfigAdmin } = require('../../middlewares/passportAdmin');
 export const PostsRouter = express.Router();
 
@@ -275,7 +273,7 @@ PostsRouter.post(
         const dataInsert = req.body;
         if (req.file) {
           const result = await cloudinary.uploader.upload(req.file.path, {
-            folder: 'products',
+            folder: 'posts',
           });
           const imageUrl = {
             url: result.secure_url,
@@ -317,7 +315,7 @@ PostsRouter.delete('/all/:url', passport.authenticate('admin', { session: false 
 });
 
 //Admin post update
-PostsRouter.patch('/all/:id', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req, res) => {
+PostsRouter.patch('/all/:id', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), uploadCloud.single('file'), async (req, res) => {
   const id = req.params.id;
   let inputError = [];
   for (const key in req.body) {
@@ -368,40 +366,36 @@ PostsRouter.patch('/all/:id', passport.authenticate('admin', { session: false })
 });
 
 //Admin post upload image
-PostsRouter.post(
-  '/all/:id/upload',
-  passport.authenticate('admin', { session: false }),
-  allowRoles('R1', 'R3'),
-  uploadCloud.single('file'),
-  async (req, res) => {
-    const id = req.params.id;
-    try {
-      let found = await Post.findOne({ id });
-      if (!found) {
-        return res.status(404).json({ message: `Couldn't find that Post Post id` });
-      }
-      if (req.file) {
-        try {
-          const upload = await cloudinary.uploader.upload(req.file.path, {
-            folder: 'products',
-          });
-          let imageUrl = {
-            url: upload.secure_url,
-            publicId: upload.public_id,
-            postId: found._id,
-            name: upload.original_filename,
-            size: upload.bytes,
-          };
-          let newItem = new ImageUrl(imageUrl);
-          let result = await newItem.save();
-          return res.status(201).json(result);
-        } catch (error) {
-          console.log(error);
-          return res.status(500).json({ message: 'Database Error' });
+PostsRouter.post('/all/upload', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), uploadCloud.single('file'), async (req, res) => {
+  const postId = req.body.postId;
+  try {
+    if (req.file) {
+      try {
+        const upload = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'postContents',
+        });
+        let imageUrl: imageUrl = {
+          url: upload.secure_url,
+          publicId: upload.public_id,
+          name: upload.original_filename,
+          size: upload.bytes,
+        };
+        if (postId !== undefined) {
+          let found = await Post.findOne({ postId });
+          if (!found) {
+            return res.status(404).json({ message: `Couldn't find that Post Post id` });
+          }
+          imageUrl = { ...imageUrl, postId: found._id };
         }
+        let newItem = new ImageUrl(imageUrl);
+        let result = await newItem.save();
+        return res.status(201).json(result);
+      } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: 'Database Error' });
       }
-    } catch (error) {
-      return res.status(500).json({ message: 'Database Error' });
     }
-  },
-);
+  } catch (error) {
+    return res.status(500).json({ message: 'Database Error' });
+  }
+});

@@ -2,12 +2,11 @@ import express, { NextFunction, Request, Response } from 'express';
 import { PostCategory, postCategorySchema } from '../../entities/post-category.model';
 import { checkUnique } from '../../utils/checkUnique';
 import { validateSchema, validateSchemaByField } from '../../utils/validateSchema';
-import { fileUpload } from '../fileUpload';
 import { urlGenerate } from '../../utils/urlGenerate';
-import { uploadSingle } from '../../utils/upload';
-import multer from 'multer';
 import { allowRoles } from '../../middlewares/verifyRoles';
 import passport from 'passport';
+import { uploadCloud } from '../../middlewares/fileMulter';
+import cloudinary from '../../utils/cloudinary';
 const { passportConfigAdmin } = require('../../middlewares/passportAdmin');
 export const PostCategoriesRouter = express.Router();
 
@@ -112,16 +111,30 @@ PostCategoriesRouter.post(
   '/all',
   passport.authenticate('admin', { session: false }),
   allowRoles('R1', 'R3'),
+  uploadCloud.single('file'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { file, ...body } = req.body;
-      await validateSchema(postCategorySchema, body);
+      await validateSchema(postCategorySchema, req.body);
       try {
-        let isUnique = await checkUnique(PostCategory, body, 'title');
+        let isUnique = await checkUnique(PostCategory, req.body, 'title');
         if (!isUnique) {
           return res.status(400).json({ message: 'title must be unique' });
         }
-        const newItem = new PostCategory({ ...body, url: urlGenerate(body.title) });
+        const dataInsert = req.body;
+        if (req.file) {
+          const result = await cloudinary.uploader.upload(req.file.path, {
+            folder: 'categories',
+          });
+          const imageUrl = {
+            url: result.secure_url,
+            publicId: result.public_id,
+            name: result.original_filename,
+            size: result.bytes,
+          };
+          dataInsert.imageUrl = imageUrl;
+        }
+        !req.body.url && (dataInsert.url = urlGenerate(req.body.title));
+        const newItem = new PostCategory(dataInsert);
         try {
           let result = await newItem.save();
           // if (file) {
@@ -157,12 +170,11 @@ PostCategoriesRouter.delete('/all/:id', passport.authenticate('admin', { session
 //Admin update post category by id
 PostCategoriesRouter.patch('/all/:id', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req, res) => {
   const id = req.params.id;
-  const { file, ...body } = req.body;
   let inputError = [];
-  for (const key in body) {
+  for (const key in req.body) {
     if (key in postCategorySchema.fields) {
       try {
-        await validateSchemaByField(postCategorySchema, body, key);
+        await validateSchemaByField(postCategorySchema, req.body, key);
       } catch (error: any) {
         inputError.push(error.errors);
       }
@@ -172,17 +184,27 @@ PostCategoriesRouter.patch('/all/:id', passport.authenticate('admin', { session:
     return res.status(400).json({ message: inputError.toString() });
   }
   try {
-    let isUnique = await checkUnique(PostCategory, body, 'title', id);
+    let isUnique = await checkUnique(PostCategory, req.body, 'title', id);
     if (!isUnique) {
       return res.status(400).json({ message: 'title must be unique' });
     }
     try {
-      let idData = await PostCategory.findByIdAndUpdate(id, { ...body, url: urlGenerate(body.title) });
+      const dataInsert = req.body;
+      if (req.file) {
+        const result = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'products',
+        });
+        const imageUrl = {
+          url: result.secure_url,
+          publicId: result.public_id,
+          name: result.original_filename,
+          size: result.bytes,
+        };
+        dataInsert.imageUrl = imageUrl;
+      }
+      req.body.title && !req.body.url && (dataInsert.url = urlGenerate(req.body.title));
+      let idData = await PostCategory.findByIdAndUpdate(id, dataInsert);
       if (idData) {
-        if (req.body.file) {
-          console.log(req.body.file[0]);
-          await fileUpload(idData?._id, req, res, PostCategory);
-        }
         return res.json({ message: `Post Category updated successfully` });
       } else res.status(404).json({ message: `Couldn't find that Post Category` });
     } catch (error) {
@@ -192,38 +214,5 @@ PostCategoriesRouter.patch('/all/:id', passport.authenticate('admin', { session:
   } catch (error) {
     console.log(error);
     return res.sendStatus(500);
-  }
-});
-
-//Admin upload image to post category by id
-PostCategoriesRouter.post('/all/:id/upload', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req, res) => {
-  const id = req.params.id;
-  try {
-    let found = await PostCategory.findById(id);
-    if (!found) {
-      return res.status(404).json({ message: `Couldn't find that Post Category id` });
-    }
-    req.params = { ...req.params, collectionName: 'postcategory' } as { id: string; url: string; collectionName: string };
-    uploadSingle(req, res, async (error: any) => {
-      if (error instanceof multer.MulterError) {
-        return res.status(500).json({ type: 'MulterError', message: error.message });
-      } else if (error) {
-        return res.status(500).json({ type: 'UnknownError', message: error.message });
-      } else {
-        const UPLOAD_DIR = process.env.UPLOAD_DIR;
-        const patchData = {
-          imageUrl: `/${UPLOAD_DIR}/postcategory/${found.id}/${req.body.file?.file}`,
-        };
-        const publicUrl = `${req.protocol}://${req.get('host')}/${UPLOAD_DIR}/postcategory/${found.id}/${req.body.file?.filename}`;
-        try {
-          await found?.updateOne(patchData);
-          return res.json({ message: 'File uploaded successfully', publicUrl });
-        } catch (error) {
-          return res.status(500).json({ message: 'Database Error' });
-        }
-      }
-    });
-  } catch (error) {
-    return res.status(500).json({ message: 'Database Error' });
   }
 });

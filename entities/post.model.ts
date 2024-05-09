@@ -3,11 +3,11 @@ import { Schema, model } from 'mongoose';
 import mongooseLeanVirtuals from 'mongoose-lean-virtuals';
 import * as yup from 'yup';
 
-const imageUrlSchema = yup.object().shape({
-  url: yup.string().required(),
-  publicId: yup.string().required(),
-  name: yup.string().required(),
-  size: yup.number().required(),
+export const imageUrlSchema = yup.object().shape({
+  url: yup.string(),
+  publicId: yup.string(),
+  name: yup.string(),
+  size: yup.number(),
 });
 
 export const postSchema = yup.object().shape({
@@ -35,7 +35,7 @@ interface Post extends Omit<yup.InferType<typeof postSchema>, 'postCategoryId'> 
   postCategoryId: ObjectId;
 }
 
-const imageUrlDbSchema = new Schema({
+export const imageUrlDbSchema = new Schema({
   url: {
     type: String,
     required: true,

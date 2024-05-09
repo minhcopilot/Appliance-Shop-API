@@ -5,13 +5,13 @@ import * as yup from 'yup';
 const imageUrlSchema = yup.object().shape({
   url: yup.string().required(),
   publicId: yup.string().required(),
-  postId: yup.string().required(),
+  postId: yup.string(),
   name: yup.string().required(),
   size: yup.number().required(),
 });
 
-interface imageUrl extends Omit<yup.InferType<typeof imageUrlSchema>, 'postId'> {
-  postId: ObjectId;
+export interface imageUrl extends Omit<yup.InferType<typeof imageUrlSchema>, 'postId'> {
+  postId?: ObjectId;
 }
 
 const imageUrlDbSchema = new Schema<imageUrl>({

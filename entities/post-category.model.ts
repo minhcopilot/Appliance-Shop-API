@@ -2,6 +2,7 @@ import { ObjectId } from 'mongodb';
 import mongoose, { Schema, model } from 'mongoose';
 import mongooseLeanVirtuals from 'mongoose-lean-virtuals';
 import * as yup from 'yup';
+import { imageUrlDbSchema, imageUrlSchema } from './post.model';
 
 export const postCategorySchema = yup.object().shape({
   title: yup.string().required().max(100),
@@ -14,7 +15,7 @@ export const postCategorySchema = yup.object().shape({
       return ObjectId.isValid(value);
     }),
   url: yup.string().max(500),
-  imageUrl: yup.string().max(500),
+  imageUrl: imageUrlSchema,
   isDeleted: yup.boolean().default(false),
   createdBy: yup.string().max(100),
   updatedBy: yup.string().max(100),
@@ -44,10 +45,7 @@ const postCategoryDbSchema = new Schema<PostCategory>(
       type: String,
       maxLength: 500,
     },
-    imageUrl: {
-      type: String,
-      maxLength: 500,
-    },
+    imageUrl: imageUrlDbSchema,
     isDeleted: {
       type: Boolean,
       default: false,
