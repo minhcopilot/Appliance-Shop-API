@@ -9,6 +9,7 @@ import passport from 'passport';
 import { uploadCloud } from '../../middlewares/fileMulter';
 import cloudinary from '../../utils/cloudinary';
 import { ImageUrl, imageUrl } from '../../entities/postImage.model';
+import { stripContent, stripTags } from '../../utils/striphtmltag';
 const { passportConfigAdmin } = require('../../middlewares/passportAdmin');
 export const PostsRouter = express.Router();
 
@@ -17,7 +18,11 @@ passport.use('admin', passportConfigAdmin);
 // Client get all post
 PostsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.json(await Post.find({ status: 'published' }).lean({ virtuals: true }).populate(['commentsCount', 'category']));
+    const result = await Post.find({ status: 'published' }).lean({ virtuals: true }).populate(['commentsCount', 'category']);
+    const stripcontent = result.map((post: any) => {
+      return { ...post, content: stripContent(stripTags(post.content)) };
+    });
+    res.json(stripcontent);
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Database Error' });
@@ -119,17 +124,15 @@ PostsRouter.get('/:url/comments', async (req: Request, res: Response, next: Next
         from: 'posts',
         localField: 'postId',
         foreignField: '_id',
+        as: 'posts',
         pipeline: [
           {
             $project: { url: 1 },
           },
         ],
-        as: 'posts',
       },
     };
-    let found = await Comment.aggregate([lookupPost, { $unwind: '$posts' }, { $match: { $or: [{ _id: url }, { url: url }], status: 'approved' } }]).project({
-      posts: 0,
-    });
+    let found = await Comment.aggregate([lookupPost, { $unwind: '$posts' }, { $match: { 'posts.url': url, status: 'approved' } }]).project({ posts: 0 });
     res.json(found);
   } catch (error) {
     console.log(error);
@@ -262,7 +265,7 @@ PostsRouter.post(
   passport.authenticate('admin', { session: false }),
   allowRoles('R1', 'R3'),
   uploadCloud.single('file'),
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: any, res: Response, next: NextFunction) => {
     try {
       await validateSchema(postSchema, req.body);
       try {
@@ -270,7 +273,7 @@ PostsRouter.post(
         if (!isUnique) {
           return res.status(400).json({ message: 'title must be unique' });
         }
-        const dataInsert = req.body;
+        const dataInsert = { ...req.body, authorId: req.user?.id, authorName: req.user?.firstName + ' ' + req.user?.lastName };
         if (req.file) {
           const result = await cloudinary.uploader.upload(req.file.path, {
             folder: 'posts',
@@ -315,55 +318,61 @@ PostsRouter.delete('/all/:url', passport.authenticate('admin', { session: false 
 });
 
 //Admin post update
-PostsRouter.patch('/all/:id', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), uploadCloud.single('file'), async (req, res) => {
-  const id = req.params.id;
-  let inputError = [];
-  for (const key in req.body) {
-    if (key in postSchema.fields) {
-      try {
-        await validateSchemaByField(postSchema, req.body, key);
-      } catch (error: any) {
-        inputError.push(error.errors);
+PostsRouter.patch(
+  '/all/:id',
+  passport.authenticate('admin', { session: false }),
+  allowRoles('R1', 'R3'),
+  uploadCloud.single('file'),
+  async (req: any, res: Response) => {
+    const id = req.params.id;
+    let inputError = [];
+    for (const key in req.body) {
+      if (key in postSchema.fields) {
+        try {
+          await validateSchemaByField(postSchema, req.body, key);
+        } catch (error: any) {
+          inputError.push(error.errors);
+        }
       }
     }
-  }
-  if (inputError.length > 0) {
-    return res.status(400).json({ message: inputError.toString() });
-  }
-  try {
-    let isUnique = await checkUnique(Post, req.body, 'title', id);
-    if (!isUnique) {
-      return res.status(400).json({ message: 'title must be unique' });
+    if (inputError.length > 0) {
+      return res.status(400).json({ message: inputError.toString() });
     }
-
     try {
-      const dataInsert = req.body;
-      if (req.file) {
-        const result = await cloudinary.uploader.upload(req.file.path, {
-          folder: 'products',
-        });
-        const imageUrl = {
-          url: result.secure_url,
-          publicId: result.public_id,
-          name: result.original_filename,
-          size: result.bytes,
-        };
-        dataInsert.imageUrl = imageUrl;
+      let isUnique = await checkUnique(Post, req.body, 'title', id);
+      if (!isUnique) {
+        return res.status(400).json({ message: 'title must be unique' });
       }
-      req.body.title && !req.body.url && (dataInsert.url = urlGenerate(req.body.title));
-      let idData = await Post.findOneAndUpdate({ $or: [{ _id: id }, { url: id }] }, dataInsert);
-      if (idData) {
-        return res.json({ message: `Post Post updated successfully` });
-      } else res.status(404).json({ message: `Couldn't find that Post Post` });
+
+      try {
+        const dataInsert = { ...req.body, updatedBy: req.user?.firstName + ' ' + req.user?.lastName };
+        if (req.file) {
+          const result = await cloudinary.uploader.upload(req.file.path, {
+            folder: 'products',
+          });
+          const imageUrl = {
+            url: result.secure_url,
+            publicId: result.public_id,
+            name: result.original_filename,
+            size: result.bytes,
+          };
+          dataInsert.imageUrl = imageUrl;
+        }
+        req.body.title && !req.body.url && (dataInsert.url = urlGenerate(req.body.title));
+        let idData = await Post.findOneAndUpdate({ $or: [{ _id: id }, { url: id }] }, dataInsert);
+        if (idData) {
+          return res.json({ message: `Post Post updated successfully` });
+        } else res.status(404).json({ message: `Couldn't find that Post Post` });
+      } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: 'Database Error' });
+      }
     } catch (error) {
       console.log(error);
-      res.status(500).json({ message: 'Database Error' });
+      return res.sendStatus(500);
     }
-  } catch (error) {
-    console.log(error);
-    return res.sendStatus(500);
-  }
-});
+  },
+);
 
 //Admin post upload image
 PostsRouter.post('/all/upload', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), uploadCloud.single('file'), async (req, res) => {

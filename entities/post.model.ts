@@ -20,7 +20,7 @@ export const postSchema = yup.object().shape({
       return ObjectId.isValid(value);
     }),
   title: yup.string().required().max(100),
-  content: yup.string().required(),
+  content: yup.string().default(''),
   authorId: yup.number(),
   authorName: yup.string().max(100),
   url: yup.string().max(500),
@@ -28,7 +28,7 @@ export const postSchema = yup.object().shape({
   status: yup.string().max(20).oneOf(['draft', 'published', 'deleted']).default('draft'),
   commentStatus: yup.string().max(20).oneOf(['open', 'closed']).default('open'),
   like: yup.number().default(0),
-  updateBy: yup.string().max(100),
+  updatedBy: yup.string().max(100),
 });
 
 interface Post extends Omit<yup.InferType<typeof postSchema>, 'postCategoryId'> {
@@ -76,6 +76,7 @@ const postDbSchema = new Schema<Post>(
     content: {
       type: String,
       required: true,
+      default: '',
     },
     authorId: {
       type: Number,
@@ -113,7 +114,7 @@ const postDbSchema = new Schema<Post>(
       type: Number,
       default: 0,
     },
-    updateBy: {
+    updatedBy: {
       type: String,
       maxLength: 100,
     },

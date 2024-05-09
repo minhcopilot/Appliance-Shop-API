@@ -47,11 +47,12 @@ CommentsRouter.get('/all/search/query', passport.authenticate('admin', { session
 
 //Admin update comment by id
 CommentsRouter.patch(
-  '/:id',
+  '/all/:id',
   passport.authenticate('admin', { session: false }),
   allowRoles('R1', 'R3'),
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: any, res: Response, next: NextFunction) => {
     const id = req.params.id;
+    console.log(req);
     let inputError = [];
     for (const key in req.body) {
       if (key in commentSchema.fields) {
@@ -66,6 +67,7 @@ CommentsRouter.patch(
       return res.status(400).json({ message: inputError.toString() });
     }
     try {
+      console.log(req.body);
       let idData = await Comment.findByIdAndUpdate(id, req.body);
       if (idData) {
         return res.json({ message: `Comment updated successfully` });
@@ -77,7 +79,7 @@ CommentsRouter.patch(
 );
 
 //Admin delete comment by id
-CommentsRouter.delete('/:id', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
+CommentsRouter.delete('/all/:id', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
   const id = req.params.id;
   try {
     let idData = await Comment.findByIdAndDelete(id);

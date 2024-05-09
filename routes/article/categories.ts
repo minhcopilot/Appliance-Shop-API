@@ -112,7 +112,7 @@ PostCategoriesRouter.post(
   passport.authenticate('admin', { session: false }),
   allowRoles('R1', 'R3'),
   uploadCloud.single('file'),
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: any, res: Response, next: NextFunction) => {
     try {
       await validateSchema(postCategorySchema, req.body);
       try {
@@ -120,7 +120,7 @@ PostCategoriesRouter.post(
         if (!isUnique) {
           return res.status(400).json({ message: 'title must be unique' });
         }
-        const dataInsert = req.body;
+        const dataInsert = { ...req.body, createdBy: req.user.firstName + ' ' + req.user.lastName };
         if (req.file) {
           const result = await cloudinary.uploader.upload(req.file.path, {
             folder: 'categories',
@@ -168,7 +168,7 @@ PostCategoriesRouter.delete('/all/:id', passport.authenticate('admin', { session
 });
 
 //Admin update post category by id
-PostCategoriesRouter.patch('/all/:id', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req, res) => {
+PostCategoriesRouter.patch('/all/:id', passport.authenticate('admin', { session: false }), allowRoles('R1', 'R3'), async (req: any, res: Response) => {
   const id = req.params.id;
   let inputError = [];
   for (const key in req.body) {
@@ -189,7 +189,7 @@ PostCategoriesRouter.patch('/all/:id', passport.authenticate('admin', { session:
       return res.status(400).json({ message: 'title must be unique' });
     }
     try {
-      const dataInsert = req.body;
+      const dataInsert = { ...req.body, updatedBy: req.user.firstName + ' ' + req.user.lastName };
       if (req.file) {
         const result = await cloudinary.uploader.upload(req.file.path, {
           folder: 'products',
