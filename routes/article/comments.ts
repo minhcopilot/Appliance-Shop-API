@@ -52,7 +52,6 @@ CommentsRouter.patch(
   allowRoles('R1', 'R3'),
   async (req: any, res: Response, next: NextFunction) => {
     const id = req.params.id;
-    console.log(req);
     let inputError = [];
     for (const key in req.body) {
       if (key in commentSchema.fields) {
@@ -67,12 +66,12 @@ CommentsRouter.patch(
       return res.status(400).json({ message: inputError.toString() });
     }
     try {
-      console.log(req.body);
       let idData = await Comment.findByIdAndUpdate(id, req.body);
       if (idData) {
         return res.json({ message: `Comment updated successfully` });
       } else res.status(404).json({ message: `Couldn't find that comment` });
     } catch (error) {
+      console.log(error);
       res.status(500).json({ message: 'Database Error' });
     }
   },

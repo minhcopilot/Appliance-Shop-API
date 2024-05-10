@@ -12,6 +12,7 @@ import userRouter from './routes/user/routes';
 import { articleRouter } from './routes/article/routes';
 import { ChatRouter } from './routes/chat';
 import mongoose from 'mongoose';
+import session from 'express-session';
 
 //MongoDB connection with initial retry
 const mongooseConnection = 'mongodb://' + process.env.MONGODB_URL;
@@ -45,8 +46,20 @@ AppDataSource.initialize().then(async () => {
   app.use(cookieParser());
   app.use(express.static(path.join(__dirname, 'public')));
 
+  // use session
+  app.use(
+    session({
+      secret: process.env.SECRET || 'secret',
+      resave: true,
+      saveUninitialized: true,
+      cookie: { maxAge: 24 * 60 * 60 * 1000 },
+    }),
+  );
+
   // use cors
-  app.use(cors({ origin: '*' }));
+  app.use(
+    cors({ origin: [process.env.CLIENT_URL || 'http://localhost:3000', process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000'], credentials: true }),
+  );
 
   app.use('/', indexRouter);
   app.use('/admin', adminRoutes);
