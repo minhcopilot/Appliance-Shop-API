@@ -17,7 +17,7 @@ const sendMail = asyncHandler(async ({ email, html }: MailData) => {
   });
 
   let info = await transporter.sendMail({
-    from: 'CuaHangGiaDung <no-relply@cuahanggiadung.com>',
+    from: 'Gia dụng Haven <no-relply@cuahanggiadung.com>',
     to: email,
     subject: 'Quên mật khẩu',
     html: html,
