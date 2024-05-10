@@ -84,11 +84,24 @@ PostsRouter.get('/all/search/query', passport.authenticate('admin', { session: f
 });
 
 //Client get post by url
-PostsRouter.get('/:url', async (req: Request, res: Response, next: NextFunction) => {
+PostsRouter.get('/:url', async (req: any, res: Response, next: NextFunction) => {
   const url = req.params.url;
   try {
-    let postData = await Post.findOne({ url, status: 'published' }).lean({ virtuals: true }).populate(['commentsCount', 'category']);
-    postData ? res.json(postData) : res.status(404).json({ message: `Couldn't find that post` });
+    let postData = await Post.findOne({ url, status: 'published' }).populate(['commentsCount', 'category']);
+    if (!postData) {
+      return res.status(404).json({ message: `Couldn't find that post` });
+    }
+    //increase view count
+    if (!req.session.views) {
+      req.session.views = {};
+    }
+    console.log(req.session);
+    if (req.session.views[String(postData._id)] !== true) {
+      postData.view += 1;
+      postData.save();
+      req.session.views[String(postData._id)] = true;
+    }
+    res.json(postData);
   } catch (error: any) {
     console.log(error);
     res.status(500).json({ message: 'Database Error' });
@@ -203,16 +216,38 @@ PostsRouter.post('/:url/comments', async (req: Request, res: Response, next: Nex
 });
 
 //Client post like by url
-PostsRouter.post('/:url/like', async (req: Request, res: Response) => {
+PostsRouter.post('/:url/like', async (req: any, res: Response) => {
   const url = req.params.url;
+  const like = req.body.like;
+  if (typeof like !== 'boolean') {
+    return res.status(400).json({ message: 'Invalid like value' });
+  }
   try {
     let found = await Post.findOne({ url });
     if (!found) {
       return res.status(404).json({ message: `Couldn't find that post` });
     }
-    found.like += 1;
+    if (!req.session.likes) {
+      req.session.likes = {};
+    }
+    if (like === undefined) return res.send(req.session.likes[String(found._id)] || false);
+    if (req.session.likes[String(found._id)] === true) {
+      if (like) {
+        return res.send(true);
+      } else {
+        req.session.likes[String(found._id)] = false;
+        found.like -= 1;
+      }
+    } else {
+      if (!like) {
+        return res.send(false);
+      } else {
+        req.session.likes[String(found._id)] = true;
+        found.like += 1;
+      }
+    }
     found.save();
-    return res.json({ message: 'Post liked successfully' });
+    res.send(req.session.likes[String(found._id)]);
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: 'Database Error' });

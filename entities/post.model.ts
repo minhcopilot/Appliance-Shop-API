@@ -28,6 +28,7 @@ export const postSchema = yup.object().shape({
   status: yup.string().max(20).oneOf(['draft', 'published', 'deleted']).default('draft'),
   commentStatus: yup.string().max(20).oneOf(['open', 'closed']).default('open'),
   like: yup.number().default(0),
+  view: yup.number().default(0),
   updatedBy: yup.string().max(100),
 });
 
@@ -112,6 +113,12 @@ const postDbSchema = new Schema<Post>(
     },
     like: {
       type: Number,
+      required: true,
+      default: 0,
+    },
+    view: {
+      type: Number,
+      required: true,
       default: 0,
     },
     updatedBy: {
