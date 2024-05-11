@@ -4,6 +4,7 @@ import { Category } from './category.entity';
 import { Supplier } from './supplier.entity';
 import { OrderDetail } from './order-details.entity';
 import { Max, Min, min } from 'class-validator';
+import { Cart } from './cart.entity';
 
 @Entity({ name: 'Products' })
 export class Product {
@@ -76,4 +77,7 @@ export class Product {
 
   @OneToMany(() => OrderDetail, (od) => od.product)
   orderDetails: OrderDetail[];
+
+  @OneToMany(() => Cart, (c) => c.product)
+  carts: Cart[];
 }

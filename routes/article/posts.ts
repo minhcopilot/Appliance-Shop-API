@@ -20,7 +20,7 @@ PostsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => 
   try {
     const result = await Post.find({ status: 'published' }).lean({ virtuals: true }).populate(['commentsCount', 'category']);
     const stripcontent = result.map((post: any) => {
-      return { ...post, content: stripContent(stripTags(post.content)) };
+      return { ...post, content: stripContent(stripTags(post.content), 30) };
     });
     res.json(stripcontent);
   } catch (error) {
