@@ -50,6 +50,6 @@ router.get('/facebook/callback', (req, res, next) => {
 router.post('/login-success', loginSuccess);
 
 // forgot password
-router.get('/forgot-password', forgotPassword);
+router.post('/forgot-password', forgotPassword);
 router.put('/reset-password', resetPassword);
 export default router;

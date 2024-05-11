@@ -31,7 +31,7 @@ const login = asyncHandler(async (req: any, res: any, next: any) => {
 const register = asyncHandler(async (req: any, res: any) => {
   try {
     const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
-    const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
+    // const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
     const customer = await repository.findOneBy({ email: email });
     if (customer) {
       return res.status(400).json({ message: 'Account already exists' });
@@ -42,8 +42,8 @@ const register = asyncHandler(async (req: any, res: any) => {
       firstName: firstName,
       lastName: lastName,
       phoneNumber: phoneNumber,
-      address: address,
-      birthday: formattedBirthday,
+      // address: address,
+      // birthday: formattedBirthday,
       email: email,
       password: hash,
     };
@@ -123,10 +123,12 @@ const loginSuccess = asyncHandler(async (req: any, res: any) => {
 });
 const forgotPassword = asyncHandler(async (req: any, res: any) => {
   try {
-    const { email } = req.query;
+    const { email } = req.body;
     if (!email) throw new Error('Missing email');
     const customer = await repository.findOneBy({ email: email });
-    if (!customer) throw new Error('Customer not found');
+    if (!customer) {
+      return res.status(404).json({ message: 'Email not found' });
+    }
 
     const resetToken = customer.createPasswordChangedToken();
     await repository.save(customer);
@@ -134,7 +136,7 @@ const forgotPassword = asyncHandler(async (req: any, res: any) => {
     const html = `Nếu bạn thực hiện đặt lại mật khẩu cho tài khoản cửa hàng đồ gia dụng
       thì nhấn vào link sau đây để đặt lại mật khẩu cho tài khoản email của mình:
       Link này sẽ hết hạn sau 15 phút kể từ bây giờ.
-      <a href=${process.env.SERVER_URL}/user/auth/reset-password/${resetToken}> Nhấn vào đây</a>
+      <a href=${process.env.CLIENT_URL}/reset-password/${resetToken}> Nhấn vào đây</a>
       `;
     const data = {
       email: email,
@@ -166,7 +168,7 @@ const resetPassword = asyncHandler(async (req: any, res: any) => {
   });
 
   if (!customer) {
-    throw new Error('Invalid reset token');
+    return res.status(401).json({ message: 'Thời gian đặt lại mật khẩu đã hết hạn' });
   }
 
   customer.password = password;
