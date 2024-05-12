@@ -4,6 +4,7 @@ import { Role } from './role.entity';
 import * as bcrypt from 'bcrypt';
 import { Chat } from './chat.entity';
 import { IsEmail, IsPhoneNumber } from 'class-validator';
+import { Cart } from './cart.entity';
 const crypto = require('crypto');
 @Entity({ name: 'Customers' })
 export class Customer {
@@ -11,7 +12,7 @@ export class Customer {
   @PrimaryGeneratedColumn({ name: 'Id' })
   id: number;
 
-    // FIRST NAME
+  // FIRST NAME
   @Column({ name: 'FirstName', type: 'nvarchar', length: 50 })
   firstName: string;
 
@@ -62,6 +63,9 @@ export class Customer {
   //CHATS
   @OneToMany(() => Chat, (c) => c.customer)
   chats: Chat[];
+
+  @OneToMany(() => Cart, (c) => c.customer)
+  carts: Cart[];
 
   @BeforeInsert()
   @BeforeUpdate()

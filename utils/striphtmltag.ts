@@ -1,8 +1,12 @@
-export const stripTags = (original: string) => {
-  return original.replace(/<[^>]+>/g, '');
+import { JSDOM } from 'jsdom';
+export const stripTags = (original: any) => {
+  let { document } = new JSDOM(original).window;
+  //return all text content from the document
+  return document.body.textContent || '';
 };
 
-export const stripContent = (content: string) => {
-  if (content.length <= 100) return content;
-  return content.substring(0, content.lastIndexOf(' ', 100));
+export const stripContent = (content: any, length: number) => {
+  if (!content) return null;
+  if (content.length <= length) return content;
+  return content.substring(0, content.lastIndexOf(' ', length));
 };
