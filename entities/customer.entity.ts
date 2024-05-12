@@ -17,7 +17,7 @@ export class Customer {
   firstName: string;
 
   // LAST NAME
-  @Column({ name: 'LastName', type: 'nvarchar', length: 50 })
+  @Column({ name: 'LastName', type: 'nvarchar', length: 50, nullable: true })
   lastName: string;
 
   // PHONE NUMBER

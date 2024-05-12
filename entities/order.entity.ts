@@ -52,7 +52,7 @@ export class Order {
   @Column({ type: 'int' })
   customerId: number;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'int', nullable: true })
   employeeId: number;
 
   // RELATIONS

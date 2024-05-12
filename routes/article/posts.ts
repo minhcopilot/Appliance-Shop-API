@@ -18,7 +18,9 @@ passport.use('admin', passportConfigAdmin);
 // Client get all post
 PostsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await Post.find({ status: 'published' }).lean({ virtuals: true }).populate(['commentsCount', 'category']);
+    const result = await Post.find({ status: 'published' })
+      .lean({ virtuals: true })
+      .populate([{ path: 'commentsCount', match: { status: 'approved' } }, 'category']);
     const stripcontent = result.map((post: any) => {
       return { ...post, content: stripContent(stripTags(post.content), 30) };
     });

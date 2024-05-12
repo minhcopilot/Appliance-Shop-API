@@ -6,14 +6,23 @@ import { Order } from '../entities/order.entity';
 import { Customer } from '../entities/customer.entity';
 import { Product } from '../entities/product.entity';
 import { allowRoles } from '../middlewares/verifyRoles';
+import passport from 'passport';
+import { passportSocketVerifyToken } from '../middlewares/passportSocket';
+const { passportConfigAdmin } = require('../middlewares/passportAdmin');
+
+const AnonymousStrategy = require('passport-anonymous').Strategy;
 
 const router = express.Router();
 const productRepository = AppDataSource.getRepository(Product);
 const customerRepository = AppDataSource.getRepository(Customer);
 const orderRepository = AppDataSource.getRepository(Order);
 const orderDetailRepository = AppDataSource.getRepository(OrderDetail);
+passport.use('jwt', passportSocketVerifyToken);
+passport.use('admin', passportConfigAdmin);
+passport.use(new AnonymousStrategy());
+
 /* GET orders */
-router.get('/', async (req: Request, res: Response, next: any) => {
+router.get('/', passport.authenticate('admin', { session: false }), async (req: Request, res: Response, next: any) => {
   try {
     // SELECT * FROM [Products] AS 'product'
     const orders = await orderRepository
@@ -56,7 +65,7 @@ router.get('/', async (req: Request, res: Response, next: any) => {
   }
 });
 
-router.get('/:id', async (req: Request, res: Response, next: any) => {
+router.get('/:id', passport.authenticate('jwt', { session: false }), async (req: any, res: Response, next: any) => {
   try {
     // SELECT * FROM [Products] AS 'product'
     const order = await orderRepository
@@ -90,6 +99,10 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
       ])
       .getOne();
 
+    if (order?.customerId !== req.user.id && req.user.roles !== ('R3' || 'R1')) {
+      return res.status(403).json({ message: 'You do not have permission to access this resource' });
+    }
+
     if (order) {
       res.status(200).json(order);
     } else {
@@ -100,23 +113,71 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
   }
 });
 
-router.post('/', async (req: Request, res: Response) => {
-  const { shippedDate, status, description, shippingAddress, shippingCity, paymentType, customerId, employeeId, orderDetails } = req.body;
+router.post('/', passport.authenticate(['jwt', 'anonymous'], { session: false }), async (req: any, res: Response) => {
+  const {
+    firstName,
+    lastName,
+    phoneNumber,
+    email,
+    shippedDate,
+    status,
+    description,
+    shippingAddress,
+    shippingCity,
+    paymentType,
+    customerId,
+    employeeId,
+    orderDetails,
+  } = req.body;
 
+  let order = {
+    shippedDate,
+    status,
+    description,
+    shippingAddress,
+    shippingCity,
+    paymentType,
+    customerId,
+    employeeId,
+  };
+  if (req.user?.roles === ('R3' || 'R1')) {
+    order.employeeId = req.user.id;
+  } else {
+    order.customerId = req.user.id;
+  }
   try {
-    const newOrder = orderRepository.create({
-      shippedDate,
-      status,
-      description,
-      shippingAddress,
-      shippingCity,
-      paymentType,
-      customerId,
-      employeeId,
-    });
+    orderDetails &&
+      orderDetails.forEach(async (od: any) => {
+        try {
+          let product = await productRepository.findOne({ where: { id: od.productId } });
+          if (!product) {
+            return res.status(400).json({ message: 'Sản phẩm không tồn tại' });
+          }
+          if (product?.stock < od.quantity) {
+            return res.status(400).json({ message: 'Số lượng sản phẩm không đủ' });
+          }
+          product.stock -= od.quantity;
+          await productRepository.save(product);
+        } catch (error) {
+          return res.status(500).json({ message: 'Database Error' });
+        }
+      });
 
+    if (!order.customerId) {
+      if (!phoneNumber || !email || !firstName) {
+        return res.status(400).json({ message: 'Vui lòng cung cấp thông tin khách hàng' });
+      }
+      const customer = await customerRepository.findOne({ where: { email } });
+      if (customer) {
+        if (customer.password) return res.status(400).json({ message: 'Email đã tồn tại, vui lòng dùng email khác hoặc đăng nhập để mua hàng' });
+        order.customerId = customer.id;
+      } else {
+        const newCustomer = await customerRepository.save({ phoneNumber, email, firstName, lastName });
+        order.customerId = newCustomer.id;
+      }
+    }
+    const newOrder = orderRepository.create(order);
     const savedOrder = await orderRepository.save(newOrder);
-
     if (orderDetails && orderDetails.length > 0) {
       const orderDetailEntities = orderDetails.map((od: any) => {
         return orderDetailRepository.create({
@@ -128,7 +189,6 @@ router.post('/', async (req: Request, res: Response) => {
       const savedOrderDetails = await orderDetailRepository.save(orderDetailEntities);
       savedOrder.orderDetails = savedOrderDetails;
     }
-
     res.status(201).json(savedOrder);
   } catch (error) {
     console.log('««««« error »»»»»', error);
@@ -137,9 +197,11 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // GET /orders/user/:userId
-router.get('/user/:userId', async (req: Request, res: Response) => {
+router.get('/user/:userId', passport.authenticate('jwt', { session: false }), async (req: any, res: Response) => {
   const userId = parseInt(req.params.userId, 10);
-
+  if (userId !== req.user.id && req.user.roles !== ('R3' || 'R1')) {
+    return res.status(403).json({ message: 'You do not have permission to access this resource' });
+  }
   try {
     // Kiểm tra xem userId có tồn tại trong bảng Customer không
     const customer = await customerRepository.findOne({ where: { id: userId } });
