@@ -25,7 +25,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 /* GET customer by id */
-router.get('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const customer = await repository.findOne({
       where: { id: parseInt(req.params.id) },
@@ -74,7 +74,7 @@ router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, nex
 });
 
 // PATCH customer
-router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const customer = await repository.findOneBy({ id: parseInt(req.params.id) });
     const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
