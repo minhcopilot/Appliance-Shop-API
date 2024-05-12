@@ -153,6 +153,9 @@ router.post('/', passport.authenticate(['jwt', 'anonymous'], { session: false })
           if (!product) {
             return res.status(400).json({ message: 'Sản phẩm không tồn tại' });
           }
+          if (product.price !== od.price || product.discount !== od.discount) {
+            return res.status(400).json({ message: 'Giá của sản phẩm đã thay đổi, vui lòng thử lại' });
+          }
           if (product?.stock < od.quantity) {
             return res.status(400).json({ message: 'Số lượng sản phẩm không đủ' });
           }
