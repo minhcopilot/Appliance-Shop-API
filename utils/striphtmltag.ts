@@ -8,5 +8,5 @@ export const stripTags = (original: any) => {
 export const stripContent = (content: any, length: number) => {
   if (!content) return null;
   if (content.length <= length) return content;
-  return content.substring(0, content.lastIndexOf(' ', length));
+  return content.substring(0, content.lastIndexOf(' ', length)) + '...';
 };

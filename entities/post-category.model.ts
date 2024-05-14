@@ -44,6 +44,7 @@ const postCategoryDbSchema = new Schema<PostCategory>(
     url: {
       type: String,
       maxLength: 500,
+      unique: true,
     },
     imageUrl: imageUrlDbSchema,
     isDeleted: {
