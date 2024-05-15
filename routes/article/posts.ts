@@ -10,21 +10,69 @@ import { uploadCloud } from '../../middlewares/fileMulter';
 import cloudinary from '../../utils/cloudinary';
 import { ImageUrl, imageUrl } from '../../entities/postImage.model';
 import { stripContent, stripTags } from '../../utils/striphtmltag';
+import { PostCategory } from '../../entities/post-category.model';
 const { passportConfigAdmin } = require('../../middlewares/passportAdmin');
 export const PostsRouter = express.Router();
 
 passport.use('admin', passportConfigAdmin);
 
 // Client get all post
-PostsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
+PostsRouter.get('/', async (req: any, res: Response, next: NextFunction) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const authorId: number = req.query.authorId;
+  const { category, search, type, sort } = req.query;
+  const query: any = {};
+  const paginateOptions: any = { page, limit, lean: true, populate: [{ path: 'commentsCount', match: { status: 'approved' } }, { path: 'category' }] };
+  if (sort) {
+    paginateOptions.sort = sort;
+  }
+  if (category) {
+    try {
+      const selectedCategory = await PostCategory.findOne({ url: category }).lean();
+      if (!selectedCategory) {
+        return res.status(404).json({ message: `Couldn't find that category` });
+      }
+      query['postCategoryId'] = selectedCategory._id;
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ message: 'Database Error' });
+    }
+  }
+  if (search) {
+    query['$or'] = [
+      { title: { $regex: search, $options: 'i' } },
+      { content: { $regex: search, $options: 'i' } },
+      { authorName: { $regex: search, $options: 'i' } },
+    ];
+  }
+  if (type) {
+    query['type'] = type;
+  }
+  if (authorId) {
+    query['authorId'] = authorId;
+  }
+  query['status'] = 'published';
   try {
-    const result = await Post.find({ status: 'published' })
-      .lean({ virtuals: true })
-      .populate([{ path: 'commentsCount', match: { status: 'approved' } }, 'category']);
-    const stripcontent = result.map((post: any) => {
-      return { ...post, content: stripContent(stripTags(post.content), 30) };
-    });
+    const result = await Post.paginate(query, paginateOptions);
+    const stripcontent = {
+      ...result,
+      docs: result.docs.map((post: any) => {
+        return { ...post, content: stripContent(stripTags(post.content), 200) };
+      }),
+    };
     res.json(stripcontent);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Database Error' });
+  }
+});
+
+//Client get authorId list
+PostsRouter.get('/authorIds', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    let authorIdList = await Post.find().distinct('authorId');
+    res.json(authorIdList);
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Database Error' });
@@ -38,29 +86,6 @@ PostsRouter.get('/all', passport.authenticate('admin', { session: false }), allo
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Database Error' });
-  }
-});
-
-//Client post search
-PostsRouter.get('/search/:searchString', async (req: Request, res: Response) => {
-  const searchString = req.params.searchString;
-  let query = {
-    $and: [
-      {
-        $or: [
-          { title: { $regex: searchString, $options: 'i' } },
-          { content: { $regex: searchString, $options: 'i' } },
-          { authorName: { $regex: searchString, $options: 'i' } },
-        ],
-      },
-      { status: 'published' },
-    ],
-  };
-  try {
-    let found = await Post.find(query);
-    return res.json(found);
-  } catch (error) {
-    return res.status(500).json({ message: 'Database Error' });
   }
 });
 
@@ -306,9 +331,9 @@ PostsRouter.post(
     try {
       await validateSchema(postSchema, req.body);
       try {
-        let isUnique = await checkUnique(Post, req.body, 'title');
+        let isUnique = (await checkUnique(Post, req.body, 'title')) && (await checkUnique(Post, req.body, 'url'));
         if (!isUnique) {
-          return res.status(400).json({ message: 'title must be unique' });
+          return res.status(400).json({ message: 'Tiêu đề và URL không được trùng lập' });
         }
         const dataInsert = { ...req.body, authorId: req.user?.id, authorName: req.user?.firstName + ' ' + req.user?.lastName };
         if (req.file) {
@@ -376,9 +401,9 @@ PostsRouter.patch(
       return res.status(400).json({ message: inputError.toString() });
     }
     try {
-      let isUnique = await checkUnique(Post, req.body, 'title', id);
+      let isUnique = (await checkUnique(Post, req.body, 'title', id)) && (await checkUnique(Post, req.body, 'url', id));
       if (!isUnique) {
-        return res.status(400).json({ message: 'title must be unique' });
+        return res.status(400).json({ message: 'Tiêu đề và URL không được trùng lập' });
       }
 
       try {

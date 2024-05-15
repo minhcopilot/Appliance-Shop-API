@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
-import { Schema, model } from 'mongoose';
+import { PaginateModel, Schema, model } from 'mongoose';
 import mongooseLeanVirtuals from 'mongoose-lean-virtuals';
+import paginate from 'mongoose-paginate-v2';
 import * as yup from 'yup';
 
 export const imageUrlSchema = yup.object().shape({
@@ -141,8 +142,10 @@ postDbSchema.virtual('category', {
   foreignField: '_id',
   justOne: true,
 });
+postDbSchema.plugin(paginate);
 postDbSchema.plugin(mongooseLeanVirtuals);
+
 postDbSchema.set('toObject', { virtuals: true });
 postDbSchema.set('toJSON', { virtuals: true });
 
-export const Post = model('Post', postDbSchema);
+export const Post = model<Post, PaginateModel<Post>>('Post', postDbSchema);

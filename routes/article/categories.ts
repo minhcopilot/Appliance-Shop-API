@@ -116,9 +116,9 @@ PostCategoriesRouter.post(
     try {
       await validateSchema(postCategorySchema, req.body);
       try {
-        let isUnique = await checkUnique(PostCategory, req.body, 'title');
+        let isUnique = (await checkUnique(PostCategory, req.body, 'title')) && (await checkUnique(PostCategory, req.body, 'url'));
         if (!isUnique) {
-          return res.status(400).json({ message: 'title must be unique' });
+          return res.status(400).json({ message: 'Tiêu đề và URL khônh được trùng lập' });
         }
         const dataInsert = { ...req.body, createdBy: req.user.firstName + ' ' + req.user.lastName };
         if (req.file) {
@@ -184,9 +184,9 @@ PostCategoriesRouter.patch('/all/:id', passport.authenticate('admin', { session:
     return res.status(400).json({ message: inputError.toString() });
   }
   try {
-    let isUnique = await checkUnique(PostCategory, req.body, 'title', id);
+    let isUnique = (await checkUnique(PostCategory, req.body, 'title', id)) && (await checkUnique(PostCategory, req.body, 'url', id));
     if (!isUnique) {
-      return res.status(400).json({ message: 'title must be unique' });
+      return res.status(400).json({ message: 'Tiêu đề và URL không được trùng lập' });
     }
     try {
       const dataInsert = { ...req.body, updatedBy: req.user.firstName + ' ' + req.user.lastName };
