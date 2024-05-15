@@ -6,6 +6,8 @@ import * as bcrypt from 'bcrypt';
 import { format } from 'date-fns';
 const router = express.Router();
 const repository = AppDataSource.getRepository(Customer);
+import cloudinary from '../utils/cloudinary';
+import { uploadCloud } from '../middlewares/fileMulter';
 
 /* GET customers */
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
@@ -74,35 +76,75 @@ router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, nex
 });
 
 // PATCH customer
-router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/:id', uploadCloud.single('photo'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const customer = await repository.findOneBy({ id: parseInt(req.params.id) });
     const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
     const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
+
     if (!customer) {
       return res.status(410).json({ message: 'Not found' });
     }
-    const hash = await bcrypt.hash(password, 10);
-    if (customer) {
-      customer.firstName = firstName || customer.firstName;
-      customer.lastName = lastName || customer.lastName;
-      customer.phoneNumber = phoneNumber || customer.phoneNumber;
-      customer.password = password || customer.password;
-      customer.address = address || customer.address;
-      customer.birthday = new Date(formattedBirthday);
-      customer.email = email || customer.email;
-      if (password) {
-        customer.password = hash;
+
+    const customerCopy: any = { ...customer };
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'customers',
+      });
+
+      customerCopy.photo = result.secure_url;
+
+      if (customer.photo) {
+        await cloudinary.uploader.destroy(customer.photo);
       }
-      const updatedCustomer = await repository.save(customer);
-      const { password: _, ...updatedCustomerData } = updatedCustomer || {};
-      return res.status(200).json(updatedCustomerData);
     }
+    const updatedCustomer = repository.merge(customerCopy, {
+      firstName,
+      lastName,
+      phoneNumber,
+      address,
+      birthday: new Date(formattedBirthday),
+      email,
+      password: password ? await bcrypt.hash(password, 10) : customer.password,
+    });
+    const savedCustomer = await repository.save(updatedCustomer);
+    const { password: _, ...updatedCustomerData } = savedCustomer || {};
+    return res.status(200).json(updatedCustomerData);
   } catch (error: any) {
+    console.log('««««« error »»»»»', error);
     return res.status(500).json({ message: 'Internal server error', errors: error });
   }
 });
-
+router.patch('/change-password/:id', async (req: Request, res: Response) => {
+  const { oldPassword, newPassword } = req.body;
+  try {
+    const user = await repository.findOne({
+      where: {
+        id: parseInt(req.params.id),
+      },
+    });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    // Kiểm tra nếu mật khẩu là NULL
+    if (user.password === null) {
+      // Nếu mật khẩu là NULL, cho phép thiết lập mật khẩu mới
+      user.password = newPassword;
+      await repository.save(user);
+      return res.status(200).json({ message: 'Password set successfully' });
+    }
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: 'Invalid old password' });
+    }
+    user.password = newPassword;
+    await repository.save(user);
+    return res.status(200).json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
 //Delete customer
 router.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {

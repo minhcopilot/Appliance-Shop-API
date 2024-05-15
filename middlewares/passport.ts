@@ -33,13 +33,13 @@ const passportVerifyAccount = new LocalStrategy(
       // Find user by email
       const user = await repository.findOneBy({ email: email });
       if (!user) {
-        return done(null, false); // User not found
+        return done(null, false, { message: 'Email not found' }); // User not found
       }
 
       // Validate password using the user object's method
       const isCorrectPassword = await user.validatePassword(passwordInput);
       if (!isCorrectPassword) {
-        return done(null, false); // Incorrect password
+        return done(null, false, { message: 'Incorrect password' }); // Incorrect password
       }
 
       const { password, ...userWithoutPassword } = user;
