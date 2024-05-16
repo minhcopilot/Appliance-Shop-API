@@ -37,11 +37,13 @@ PostCategoriesRouter.get(
   },
 );
 
-//Client get post category by url
+//Client get post category by url or id
 PostCategoriesRouter.get('/:url', async (req: Request, res: Response, next: NextFunction) => {
   const url = req.params.url;
   try {
-    let categoryData = await PostCategory.findOne({ url, isDeleted: false }).lean({ virtuals: true }).populate(['postCount', 'parentCategory']);
+    let categoryData = await PostCategory.findOne({ $or: [{ _id: url }, { url: url }], isDeleted: false })
+      .lean({ virtuals: true })
+      .populate(['postCount', 'parentCategory']);
     categoryData ? res.json(categoryData) : res.status(404).json({ message: `Couldn't find that category` });
   } catch (error: any) {
     console.log(error);

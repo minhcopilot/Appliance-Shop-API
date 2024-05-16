@@ -57,9 +57,7 @@ AppDataSource.initialize().then(async () => {
   );
 
   // use cors
-  app.use(
-    cors({ origin: [process.env.CLIENT_URL || 'http://localhost:3000', process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000'], credentials: true }),
-  );
+  app.use(cors({ origin: true, credentials: true }));
 
   app.use('/', indexRouter);
   app.use('/admin', adminRoutes);

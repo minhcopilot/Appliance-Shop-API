@@ -16,16 +16,16 @@ const passportSocketVerifyToken = new JwtStrategy(
   },
   async (payload: any, done: any) => {
     try {
-      const user = await customerRepository.findOneBy({ email: payload.email });
-      if (!user) {
-        const employee = await employeeRepository.findOneBy({ email: payload.email });
-        if (!employee) {
+      const employee = await employeeRepository.findOneBy({ email: payload.email });
+      if (!employee) {
+        const user = await customerRepository.findOneBy({ email: payload.email });
+        if (!user) {
           return done(null, false);
         } else {
-          return done(null, employee);
+          return done(null, user);
         }
       }
-      return done(null, user);
+      return done(null, employee);
     } catch (error) {
       done(error, false);
     }
