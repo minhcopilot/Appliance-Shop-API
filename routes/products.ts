@@ -65,7 +65,36 @@ router.get('/category/:categoryId', async (req: Request, res: Response, next: an
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
+/* Search products by keyword (name and description) */
+router.get('/search', async (req: Request, res: Response, next: any) => {
+  try {
+    const { keyword } = req.query;
 
+    const query = repository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.supplier', 'supplier')
+      .where('product.name LIKE :keyword OR product.description LIKE :keyword', { keyword: `%${keyword}%` });
+
+    const products = await query.getMany();
+
+    if (products.length === 0) {
+      return res.status(204).json({ message: 'No products found' });
+    }
+
+    // Chuyển đổi chuỗi JSON thành mảng đối tượng cho từng sản phẩm
+    const productsWithParsedImageUrls = products.map((product) => {
+      return {
+        ...product,
+        imageUrls: JSON.parse(product.imageUrls),
+      };
+    });
+
+    res.status(200).json(productsWithParsedImageUrls);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal server error', errors: error });
+  }
+});
 /* GET product by id */
 router.get('/:id', async (req: Request, res: Response, next: any) => {
   try {
