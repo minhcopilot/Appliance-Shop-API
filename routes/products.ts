@@ -36,6 +36,35 @@ router.get('/', async (req: Request, res: Response, next: any) => {
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
+/* GET products by category */
+router.get('/category/:categoryId', async (req: Request, res: Response, next: any) => {
+  try {
+    const categoryId = parseInt(req.params.categoryId);
+
+    const products = await repository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.supplier', 'supplier')
+      .where('product.categoryId = :categoryId', { categoryId })
+      .getMany();
+
+    if (products.length === 0) {
+      res.status(204).json({ message: 'No products found for this category' });
+    } else {
+      // Chuyển đổi chuỗi JSON thành mảng đối tượng cho từng sản phẩm
+      const productsWithParsedImageUrls = products.map((product) => {
+        return {
+          ...product,
+          imageUrls: JSON.parse(product.imageUrls),
+        };
+      });
+
+      res.status(200).json(productsWithParsedImageUrls);
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal server error', errors: error });
+  }
+});
 
 /* GET product by id */
 router.get('/:id', async (req: Request, res: Response, next: any) => {
