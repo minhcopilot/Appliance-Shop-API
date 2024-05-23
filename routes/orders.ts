@@ -92,7 +92,28 @@ router.get('/customer-orders', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy danh sách đơn hàng' });
   }
 });
+// GET /orders/customer/:customerId
+router.get('/customer/:customerId', async (req: Request, res: Response) => {
+  const customerId = parseInt(req.params.customerId, 10);
 
+  try {
+    // Tìm khách hàng theo customerId
+    const customer = await customerRepository.findOne({ where: { id: customerId } });
+    if (!customer) {
+      return res.status(404).json({ message: 'Không tìm thấy khách hàng.' });
+    }
+
+    // Lấy danh sách đơn hàng của khách hàng
+    const orders = await orderRepository.find({
+      where: { customer },
+      relations: ['orderDetails', 'orderDetails.product'],
+    });
+
+    res.status(200).json(orders);
+  } catch (error) {
+    res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy danh sách đơn hàng.' });
+  }
+});
 router.get('/:id', passport.authenticate('jwt', { session: false }), async (req: any, res: Response, next: any) => {
   try {
     // SELECT * FROM [Products] AS 'product'
