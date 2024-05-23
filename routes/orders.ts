@@ -65,6 +65,34 @@ router.get('/', passport.authenticate('admin', { session: false }), async (req: 
   }
 });
 
+// Get order by customer email or phone number
+router.get('/customer-orders', async (req: Request, res: Response) => {
+  const { email, phoneNumber } = req.query;
+  try {
+    let customer: Customer | null = null;
+
+    if (email) {
+      customer = await customerRepository.findOne({ where: { email: email as string } });
+    } else if (phoneNumber) {
+      customer = await customerRepository.findOne({ where: { phoneNumber: phoneNumber as string } });
+    } else {
+      return res.status(400).json({ message: 'Email hoặc số điện thoại không chính xác' });
+    }
+
+    if (!customer) {
+      return res.status(404).json({ message: 'Không tìm thấy khách hàng' });
+    }
+    const orders = await orderRepository.find({ where: { customer }, relations: ['orderDetails', 'orderDetails.product'] });
+    if (orders.length === 0) {
+      return res.status(204).json({ message: 'Không có đơn hàng nào' });
+    }
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy danh sách đơn hàng' });
+  }
+});
+
 router.get('/:id', passport.authenticate('jwt', { session: false }), async (req: any, res: Response, next: any) => {
   try {
     // SELECT * FROM [Products] AS 'product'
