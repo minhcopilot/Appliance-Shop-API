@@ -4,6 +4,7 @@ import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'ty
 import { OrderDetail } from './order-details.entity';
 import { Customer } from './customer.entity';
 import { Employee } from './employee.entity';
+import { Voucher } from './voucher.entity';
 
 @Entity({ name: 'Orders' })
 export class Order {
@@ -64,4 +65,7 @@ export class Order {
 
   @OneToMany(() => OrderDetail, (od) => od.order)
   orderDetails: OrderDetail[];
+
+  @ManyToOne(() => Voucher, (voucher) => voucher.orders, { nullable: true })
+  voucher: Voucher;
 }

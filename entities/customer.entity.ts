@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { Chat } from './chat.entity';
 import { IsEmail, IsPhoneNumber } from 'class-validator';
 import { Cart } from './cart.entity';
+import { Voucher } from './voucher.entity';
 const crypto = require('crypto');
 @Entity({ name: 'Customers' })
 export class Customer {
@@ -66,6 +67,9 @@ export class Customer {
 
   @OneToMany(() => Cart, (c) => c.customer)
   carts: Cart[];
+
+  @OneToMany(() => Voucher, (voucher) => voucher.customer)
+  vouchers: Voucher[];
 
   @BeforeInsert()
   @BeforeUpdate()
