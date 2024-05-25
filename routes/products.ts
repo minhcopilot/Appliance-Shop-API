@@ -5,6 +5,7 @@ import { Product } from '../entities/product.entity';
 import { allowRoles } from '../middlewares/verifyRoles';
 import { uploadCloud } from '../middlewares/fileMulter';
 import { fileUploadProduct, filesUploadProduct } from './fileUpload';
+import removeAccents from 'remove-accents'
 import cloudinary from '../utils/cloudinary';
 const router = express.Router();
 
@@ -250,6 +251,63 @@ router.post('/upload/:id', async (req: Request, res: Response, next: any) => {
     await fileUploadProduct(productId, req, res); // Gọi hàm xử lý upload từ controller
   } catch (error) {
     res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+
+
+
+// Search product
+router.get('/search', async (req: Request, res: Response, next: any) => {
+  try {
+    const { term } = req.query;
+
+    if (!term || typeof term !== 'string') {
+      return res.status(400).json({ error: 'Invalid search term' });
+    }
+
+    // Normalizing and removing accents
+    const normalizedTerm = removeAccents(term.toLowerCase());
+
+    // Fetch products matching the search term in a case-insensitive manner
+    const products = await repository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.supplier', 'supplier')
+      .where('LOWER(removeAccents(product.name)) LIKE :term', { term: `%${normalizedTerm}%` })
+      .getMany();
+
+    // Process imageUrls if needed
+    const productsWithParsedImageUrls = products.map((product) => ({
+      ...product,
+      imageUrls: JSON.parse(product.imageUrls),
+    }));
+
+    if (productsWithParsedImageUrls.length === 0) {
+      return res.status(204).json({ message: 'No products found' });
+    }
+
+    return res.status(200).json(productsWithParsedImageUrls);
+  } catch (error: any) {
+    return res.status(500).json({ error: 'Internal server error', errors: error.message });
+  }
+ 
+});
+
+/* GET products sorted by price */
+router.get('/sorted-by-price', async (req: Request, res: Response, next: any) => {
+  try {
+    const products = await repository.createQueryBuilder('product')
+      .orderBy('product.price', 'ASC') // Sắp xếp sản phẩm theo giá tăng dần
+      .getMany();
+
+    if (products.length === 0) {
+      res.status(204).json({ message: 'No products' });
+    } else {
+      res.status(200).json(products);
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 

@@ -3,9 +3,24 @@ import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGenerate
 import { Category } from './category.entity';
 import { Supplier } from './supplier.entity';
 import { OrderDetail } from './order-details.entity';
-import { Max, Min, min } from 'class-validator';
+import { IsIBAN, IsIn, Max, Min, min } from 'class-validator';
 import { Cart } from './cart.entity';
 
+enum Color {
+  Black = 'Black',
+  White = 'White',
+  Gray = 'Gray',
+  Yellow = 'Yellow',
+  Green = 'Green',
+}
+
+enum Size {
+  Small = 'SM',
+  Medium = 'Medium',
+  Large = 'Large',
+  XLarge = 'XLarge',
+  XXLarge = 'XXLarge',
+}
 @Entity({ name: 'Products' })
 export class Product {
   @PrimaryGeneratedColumn({ name: 'Id', type: 'int' })
@@ -55,6 +70,14 @@ export class Product {
   @Column({ name: 'CoverImageUrl', type: 'varchar', length: 500, nullable: true })
   coverImageUrl: string;
 
+  @Column({ name: 'Color', type: 'enum', enum: Color, nullable: true })
+  @IsIn(Object.values(Color))
+  color: Color;
+
+  @Column({ name: 'Size', type: 'enum', enum: Size, nullable: true })
+  @IsIn(Object.values(Size))
+  size: Size;
+
   // CATEGORY ID
   // ----------------------------------------------------------------------------------------------
   @Column({ type: 'int', nullable: true })
@@ -80,4 +103,5 @@ export class Product {
 
   @OneToMany(() => Cart, (c) => c.product)
   carts: Cart[];
+  
 }
