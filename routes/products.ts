@@ -5,7 +5,7 @@ import { Product } from '../entities/product.entity';
 import { allowRoles } from '../middlewares/verifyRoles';
 import { uploadCloud } from '../middlewares/fileMulter';
 import { fileUploadProduct, filesUploadProduct } from './fileUpload';
-import removeAccents from 'remove-accents'
+import removeAccents from 'remove-accents';
 import cloudinary from '../utils/cloudinary';
 const router = express.Router();
 
@@ -34,6 +34,7 @@ router.get('/', async (req: Request, res: Response, next: any) => {
       res.status(200).json(productsWithParsedImageUrls);
     }
   } catch (error: any) {
+    console.log(error);
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
@@ -166,9 +167,23 @@ router.patch('/:id', allowRoles('R1', 'R3'), uploadCloud.array('files', 5), asyn
     if (!product) {
       return res.status(404).json({ message: 'Not found' });
     }
+    var currentImageUrls: any[] = JSON.parse(product.imageUrls);
 
     // Cập nhật các trường dữ liệu khác của sản phẩm
     Object.assign(product, req.body);
+    //Destroy removeImages
+    if (Array.isArray(req.body.removeFiles)) {
+      const removePromises = req.body.removeFiles.map((file: any) => {
+        if (currentImageUrls.some((image: any) => image.publicId === file)) {
+          currentImageUrls.splice(
+            currentImageUrls.findIndex((image: any) => image.publicId === file),
+            1,
+          );
+          return cloudinary.uploader.destroy(file);
+        }
+      });
+      await Promise.all(removePromises);
+    }
 
     // Xử lý cập nhật hình ảnh
     if (Array.isArray(req.files) && req.files.length > 0) {
@@ -197,15 +212,11 @@ router.patch('/:id', allowRoles('R1', 'R3'), uploadCloud.array('files', 5), asyn
       });
 
       // Ghép nối mảng ảnh mới với mảng ảnh hiện tại
-      const currentImageUrls = JSON.parse(product.imageUrls);
-      const newImageUrls = [...currentImageUrls, ...dataInsert];
-
-      // Cập nhật trường imageUrls của sản phẩm
-      product.imageUrls = JSON.stringify(newImageUrls);
+      currentImageUrls = [...currentImageUrls, ...dataInsert];
     }
-
+    // Cập nhật trường imageUrls của sản phẩm
+    product.imageUrls = JSON.stringify(currentImageUrls);
     await repository.save(product);
-
     const updatedProduct = await repository
       .createQueryBuilder('p')
       .leftJoinAndSelect('p.category', 'c')
@@ -215,6 +226,7 @@ router.patch('/:id', allowRoles('R1', 'R3'), uploadCloud.array('files', 5), asyn
 
     res.status(200).json(updatedProduct);
   } catch (error: any) {
+    console.log(error);
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
@@ -254,9 +266,6 @@ router.post('/upload/:id', async (req: Request, res: Response, next: any) => {
   }
 });
 
-
-
-
 // Search product
 router.get('/search', async (req: Request, res: Response, next: any) => {
   try {
@@ -291,13 +300,13 @@ router.get('/search', async (req: Request, res: Response, next: any) => {
   } catch (error: any) {
     return res.status(500).json({ error: 'Internal server error', errors: error.message });
   }
- 
 });
 
 /* GET products sorted by price */
 router.get('/sorted-by-price', async (req: Request, res: Response, next: any) => {
   try {
-    const products = await repository.createQueryBuilder('product')
+    const products = await repository
+      .createQueryBuilder('product')
       .orderBy('product.price', 'ASC') // Sắp xếp sản phẩm theo giá tăng dần
       .getMany();
 
