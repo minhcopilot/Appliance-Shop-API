@@ -4,10 +4,12 @@ import { AppDataSource } from '../data-source';
 import { OrderDetail } from '../entities/order-details.entity';
 import { Order } from '../entities/order.entity';
 import { Customer } from '../entities/customer.entity';
+import { Voucher } from '../entities/voucher.entity';
 import { Product } from '../entities/product.entity';
 import { allowRoles } from '../middlewares/verifyRoles';
 import passport from 'passport';
 import { passportSocketVerifyToken } from '../middlewares/passportSocket';
+import { Brackets, ILike } from 'typeorm';
 const { passportConfigAdmin } = require('../middlewares/passportAdmin');
 
 const AnonymousStrategy = require('passport-anonymous').Strategy;
@@ -17,12 +19,72 @@ const productRepository = AppDataSource.getRepository(Product);
 const customerRepository = AppDataSource.getRepository(Customer);
 const orderRepository = AppDataSource.getRepository(Order);
 const orderDetailRepository = AppDataSource.getRepository(OrderDetail);
+const voucherRepository = AppDataSource.getRepository(Voucher);
 passport.use('jwt', passportSocketVerifyToken);
 passport.use('admin', passportConfigAdmin);
 passport.use(new AnonymousStrategy());
+// Search orders based on a keyword (product name or order ID)
+router.get('/search', async (req: Request, res: Response) => {
+  const { keyword } = req.query;
+
+  if (!keyword) {
+    return res.status(400).json({ message: 'Keyword is required for searching' });
+  }
+
+  try {
+    const queryBuilder = orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.customer', 'customer')
+      .leftJoinAndSelect('order.employee', 'employee')
+      .leftJoinAndSelect('order.orderDetails', 'orderDetails')
+      .leftJoinAndSelect('orderDetails.product', 'product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.supplier', 'supplier');
+
+    const keywordNumber = parseInt(keyword as string, 10);
+
+    if (!isNaN(keywordNumber)) {
+      queryBuilder.where('order.id = :orderId', { orderId: keywordNumber });
+    }
+
+    queryBuilder.orWhere('product.name LIKE :keyword', { keyword: `%${keyword}%` });
+
+    const orders = await queryBuilder
+      .select([
+        'order.id',
+        'order.createdDate',
+        'order.shippedDate',
+        'order.shippingAddress',
+        'order.shippingCity',
+        'order.paymentType',
+        'order.status',
+        'order.description',
+        'order.customerId',
+        'order.employeeId',
+        'customer',
+        'employee',
+        'orderDetails.quantity',
+        'orderDetails.price',
+        'orderDetails.discount',
+        'product',
+        'category',
+        'supplier',
+      ])
+      .getMany();
+
+    if (orders.length === 0) {
+      return res.status(404).json({ message: 'No orders found' });
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'An error occurred while searching for orders' });
+  }
+});
 
 /* GET orders */
-router.get('/', passport.authenticate('admin', { session: false }), async (req: Request, res: Response, next: any) => {
+router.get('/', async (req: Request, res: Response, next: any) => {
   try {
     // SELECT * FROM [Products] AS 'product'
     const orders = await orderRepository
@@ -44,6 +106,7 @@ router.get('/', passport.authenticate('admin', { session: false }), async (req: 
         'order.description',
         'order.customerId',
         'order.employeeId',
+        'order.voucherId',
         'customer',
         'employee',
         'orderDetails.quantity',
@@ -177,9 +240,11 @@ router.post('/', passport.authenticate(['jwt', 'anonymous'], { session: false })
     customerId,
     employeeId,
     orderDetails,
+    voucherCode,
+    voucherId,
   } = req.body;
 
-  let order = {
+  let order: Partial<Order> = {
     shippedDate,
     status,
     description,
@@ -188,6 +253,7 @@ router.post('/', passport.authenticate(['jwt', 'anonymous'], { session: false })
     paymentType,
     customerId,
     employeeId,
+    voucherId,
   };
   if (req.user?.roles === ('R3' || 'R1')) {
     order.employeeId = req.user.id;
@@ -195,41 +261,47 @@ router.post('/', passport.authenticate(['jwt', 'anonymous'], { session: false })
     order.customerId = req.user.id;
   }
   try {
-    orderDetails &&
-      orderDetails.forEach(async (od: any) => {
-        try {
-          let product = await productRepository.findOne({ where: { id: od.productId } });
-          if (!product) {
-            return res.status(400).json({ message: 'Sản phẩm không tồn tại' });
-          }
-          if (product.price !== od.price || product.discount !== od.discount) {
-            return res.status(400).json({ message: 'Giá của sản phẩm đã thay đổi, vui lòng thử lại' });
-          }
-          if (product?.stock < od.quantity) {
-            return res.status(400).json({ message: 'Số lượng sản phẩm không đủ' });
-          }
-          product.stock -= od.quantity;
-          await productRepository.save(product);
-        } catch (error) {
-          return res.status(500).json({ message: 'Database Error' });
-        }
-      });
+    if (voucherCode) {
+      const voucher = await voucherRepository.findOne({ where: { voucherCode } });
+      if (!voucher) {
+        return res.status(400).json({ message: 'Voucher không hợp lệ' });
+      }
+      order.voucherId = voucher.id;
+    }
+    for (const od of orderDetails) {
+      const product = await productRepository.findOne({ where: { id: od.productId } });
+      if (!product) {
+        return res.status(400).json({ message: 'Sản phẩm không tồn tại' });
+      }
+      if (product.price !== od.price || product.discount !== od.discount) {
+        return res.status(400).json({ message: 'Giá của sản phẩm đã thay đổi, vui lòng thử lại' });
+      }
+      if (product.stock < od.quantity) {
+        return res.status(400).json({ message: 'Số lượng sản phẩm không đủ' });
+      }
+      product.stock -= od.quantity;
+      await productRepository.save(product);
+    }
 
     if (!order.customerId) {
       if (!phoneNumber || !email || !firstName) {
         return res.status(400).json({ message: 'Vui lòng cung cấp thông tin khách hàng' });
       }
-      const customer = await customerRepository.findOne({ where: { email } });
+      let customer = await customerRepository.findOne({ where: { email } });
       if (customer) {
-        if (customer.password) return res.status(400).json({ message: 'Email đã tồn tại, vui lòng dùng email khác hoặc đăng nhập để mua hàng' });
+        if (customer.password) {
+          return res.status(400).json({ message: 'Email đã tồn tại, vui lòng dùng email khác hoặc đăng nhập để mua hàng' });
+        }
         order.customerId = customer.id;
       } else {
-        const newCustomer = await customerRepository.save({ phoneNumber, email, firstName, lastName });
-        order.customerId = newCustomer.id;
+        customer = await customerRepository.save({ phoneNumber, email, firstName, lastName });
+        order.customerId = customer.id;
       }
     }
+
     const newOrder = orderRepository.create(order);
     const savedOrder = await orderRepository.save(newOrder);
+
     if (orderDetails && orderDetails.length > 0) {
       const orderDetailEntities = orderDetails.map((od: any) => {
         return orderDetailRepository.create({
@@ -341,4 +413,5 @@ router.delete('/:orderId', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Đã xảy ra lỗi khi xóa đơn hàng.' });
   }
 });
+
 export default router;

@@ -55,6 +55,8 @@ export class Order {
 
   @Column({ type: 'int', nullable: true })
   employeeId: number;
+  @Column({ type: 'int', nullable: true })
+  voucherId: number;
 
   // RELATIONS
   @ManyToOne(() => Customer, (c) => c.orders)

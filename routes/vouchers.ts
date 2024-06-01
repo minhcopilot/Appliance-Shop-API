@@ -6,7 +6,7 @@ import { Customer } from '../entities/customer.entity';
 import { allowRoles } from '../middlewares/verifyRoles';
 const router = express.Router();
 const repository = AppDataSource.getRepository(Voucher);
-
+import { format } from 'date-fns';
 /* GET vouchers */
 router.get('/', async (req: Request, res: Response, next: any) => {
   try {
@@ -30,6 +30,7 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
     }
     return res.status(200).json(voucher);
   } catch (error: any) {
+    console.log('««««« error »»»»»', error);
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
@@ -37,9 +38,9 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
 /* POST voucher */
 router.post('/', async (req: Request, res: Response, next: any) => {
   try {
-    const { voucherCode, description, discountPercentage, startDate, expiryDate, maxUsageCount } = req.body;
+    const { voucherCode, discountPercentage, startDate, expiryDate, maxUsageCount } = req.body;
 
-    if (!voucherCode || !description || !discountPercentage || !startDate || !expiryDate || !maxUsageCount) {
+    if (!voucherCode || !discountPercentage || !startDate || !expiryDate || !maxUsageCount) {
       return res.status(400).json({ message: 'All required fields must be provided' });
     }
 
@@ -63,12 +64,15 @@ router.post('/', async (req: Request, res: Response, next: any) => {
     if (voucher) {
       return res.status(400).json({ message: 'Voucher already exists' });
     }
-
+    const startDateBirthday = format(new Date(startDate), 'yyyy-MM-dd');
+    const expiryDateBirthday = format(new Date(expiryDate), 'yyyy-MM-dd');
     let newVoucher = new Voucher();
     newVoucher = {
       ...newVoucher,
       ...req.body,
       remainingUsageCount: maxUsageCount,
+      startDate: startDateBirthday,
+      expiryDate: expiryDateBirthday,
     };
 
     const voucherCreated = await repository.save(newVoucher);
@@ -86,9 +90,17 @@ router.patch('/:id', async (req: Request, res: Response, next: any) => {
     if (!voucher) {
       return res.status(410).json({ message: 'Not found' });
     }
+    const { voucherCode, discountPercentage, startDate, expiryDate, maxUsageCount } = req.body;
+
+    const startDateBirthday = format(new Date(startDate), 'yyyy-MM-dd');
+    const expiryDateBirthday = format(new Date(expiryDate), 'yyyy-MM-dd');
     const voucherUpdated = await repository.save({
       ...voucher,
-      ...req.body,
+      startDate: startDateBirthday,
+      expiryDate: expiryDateBirthday,
+      remainingUsageCount: maxUsageCount,
+      voucherCode: voucherCode || voucher.voucherCode,
+      discountPercentage: discountPercentage || voucher.discountPercentage,
     });
     res.status(200).json(voucherUpdated);
   } catch (error: any) {
@@ -113,7 +125,7 @@ router.delete('/:id', async (req: Request, res: Response, next: any) => {
 /* apply Voucher To Order */
 router.post('/apply-voucher', async (req: Request, res: Response, next: any) => {
   try {
-    const { voucherCode, orderId } = req.body;
+    const { voucherCode } = req.body;
     const voucher = await repository.findOneBy({ voucherCode });
     if (!voucher) {
       return res.status(410).json({ message: 'Voucher not found' });
@@ -121,13 +133,7 @@ router.post('/apply-voucher', async (req: Request, res: Response, next: any) => 
     if (voucher.expiryDate < new Date() || voucher.remainingUsageCount <= 0) {
       return res.status(400).json({ message: 'Invalid voucher' });
     }
-    const orderRepository = AppDataSource.getRepository(Order);
-    const order = await orderRepository.findOneBy({ id: orderId });
-    if (!order) {
-      return res.status(410).json({ message: 'Order not found' });
-    }
-    order.voucher = voucher;
-    await orderRepository.save(order);
+
     voucher.remainingUsageCount -= 1;
     await repository.save(voucher);
     res.status(200).json({ message: 'Voucher applied to order' });
@@ -162,7 +168,7 @@ router.get('/customer/:customerId', async (req: Request, res: Response, next: an
 router.post('/customer/:customerId', async (req: Request, res: Response, next: any) => {
   try {
     const customerId = parseInt(req.params.customerId);
-    const { voucherCode, description, discountPercentage, startDate, expiryDate, maxUsageCount } = req.body;
+    const { voucherCode, discountPercentage, startDate, expiryDate, maxUsageCount } = req.body;
 
     const customerRepository = AppDataSource.getRepository(Customer);
     const customer = await customerRepository.findOneBy({ id: customerId });
@@ -171,7 +177,7 @@ router.post('/customer/:customerId', async (req: Request, res: Response, next: a
     }
 
     // Validate voucher data
-    if (!voucherCode || !description || !discountPercentage || !startDate || !expiryDate || !maxUsageCount) {
+    if (!voucherCode || !discountPercentage || !startDate || !expiryDate || !maxUsageCount) {
       return res.status(400).json({ message: 'All required fields must be provided' });
     }
 
@@ -189,7 +195,6 @@ router.post('/customer/:customerId', async (req: Request, res: Response, next: a
     const newVoucher = new Voucher();
     Object.assign(newVoucher, {
       voucherCode,
-      description,
       discountPercentage,
       startDate,
       expiryDate,

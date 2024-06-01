@@ -12,7 +12,7 @@ export class OrderDetail {
   @Min(0)
   quantity: number;
 
-  @Column({ name: 'Price', type: 'decimal', precision: 18, scale: 2, default: 0 })
+  @Column({ name: 'Price', type: 'int', default: 0 })
   @Min(0)
   price: number;
 

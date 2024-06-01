@@ -26,7 +26,7 @@ export class Voucher {
   maxUsageCount: number;
 
   @Column({ name: 'RemainingUsageCount', type: 'int' })
-  @Min(1)
+  @Min(0)
   remainingUsageCount: number;
 
   @OneToMany(() => Order, (order) => order.voucher)
