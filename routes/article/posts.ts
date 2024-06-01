@@ -405,10 +405,12 @@ PostsRouter.patch(
       if (!isUnique) {
         return res.status(400).json({ message: 'Tiêu đề và URL không được trùng lập' });
       }
-
+      const idData = await Post.findOne({ $or: [{ _id: id }, { url: id }] });
+      if (!idData) return res.status(404).json({ message: `Couldn't find that Post Post` });
       try {
         const dataInsert = { ...req.body, updatedBy: req.user?.firstName + ' ' + req.user?.lastName };
         if (req.file) {
+          await cloudinary.uploader.destroy(idData.imageUrl.publicId);
           const result = await cloudinary.uploader.upload(req.file.path, {
             folder: 'products',
           });
@@ -421,10 +423,8 @@ PostsRouter.patch(
           dataInsert.imageUrl = imageUrl;
         }
         req.body.title && !req.body.url && (dataInsert.url = urlGenerate(req.body.title));
-        let idData = await Post.findOneAndUpdate({ $or: [{ _id: id }, { url: id }] }, dataInsert);
-        if (idData) {
-          return res.json({ message: `Post Post updated successfully` });
-        } else res.status(404).json({ message: `Couldn't find that Post Post` });
+        await idData.updateOne(dataInsert);
+        return res.json({ message: 'Post Category updated successfully' });
       } catch (error) {
         console.log(error);
         res.status(500).json({ message: 'Database Error' });

@@ -37,20 +37,6 @@ PostCategoriesRouter.get(
   },
 );
 
-//Client get post category by url or id
-PostCategoriesRouter.get('/:url', async (req: Request, res: Response, next: NextFunction) => {
-  const url = req.params.url;
-  try {
-    let categoryData = await PostCategory.findOne({ $or: [{ _id: url }, { url: url }], isDeleted: false })
-      .lean({ virtuals: true })
-      .populate(['postCount', 'parentCategory']);
-    categoryData ? res.json(categoryData) : res.status(404).json({ message: `Couldn't find that category` });
-  } catch (error: any) {
-    console.log(error);
-    res.status(500).json({ message: 'Database Error' });
-  }
-});
-
 //Admin get post category by url
 PostCategoriesRouter.get(
   '/all/:url',
@@ -67,6 +53,20 @@ PostCategoriesRouter.get(
     }
   },
 );
+
+//Client get post category by url or id
+PostCategoriesRouter.get('/:url', async (req: Request, res: Response, next: NextFunction) => {
+  const url = req.params.url;
+  try {
+    let categoryData = await PostCategory.findOne({ $or: [{ _id: url }, { url: url }], isDeleted: false })
+      .lean({ virtuals: true })
+      .populate(['postCount', 'parentCategory']);
+    categoryData ? res.json(categoryData) : res.status(404).json({ message: `Couldn't find that category` });
+  } catch (error: any) {
+    console.log(error);
+    res.status(500).json({ message: 'Database Error' });
+  }
+});
 
 //Admin check unique, return array of not unique fields
 PostCategoriesRouter.post('/check-unique/', async (req, res) => {
@@ -190,9 +190,14 @@ PostCategoriesRouter.patch('/all/:id', passport.authenticate('admin', { session:
     if (!isUnique) {
       return res.status(400).json({ message: 'Tiêu đề và URL không được trùng lập' });
     }
+    const idData = await PostCategory.findById(id);
+    if (!idData) {
+      return res.status(404).json({ message: `Couldn't find that Post Category` });
+    }
     try {
       const dataInsert = { ...req.body, updatedBy: req.user.firstName + ' ' + req.user.lastName };
       if (req.file) {
+        await cloudinary.uploader.destroy(idData.imageUrl.publicId);
         const result = await cloudinary.uploader.upload(req.file.path, {
           folder: 'products',
         });
@@ -205,10 +210,8 @@ PostCategoriesRouter.patch('/all/:id', passport.authenticate('admin', { session:
         dataInsert.imageUrl = imageUrl;
       }
       req.body.title && !req.body.url && (dataInsert.url = urlGenerate(req.body.title));
-      let idData = await PostCategory.findByIdAndUpdate(id, dataInsert);
-      if (idData) {
-        return res.json({ message: `Post Category updated successfully` });
-      } else res.status(404).json({ message: `Couldn't find that Post Category` });
+      await idData.updateOne(dataInsert);
+      return res.json({ message: 'Post Category updated successfully' });
     } catch (error) {
       console.log(error);
       res.status(500).json({ message: 'Database Error' });
