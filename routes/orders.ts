@@ -10,10 +10,10 @@ import { allowRoles } from '../middlewares/verifyRoles';
 import passport from 'passport';
 import { passportSocketVerifyToken } from '../middlewares/passportSocket';
 import { Brackets, ILike } from 'typeorm';
+import axios from 'axios';
 const { passportConfigAdmin } = require('../middlewares/passportAdmin');
 
 const AnonymousStrategy = require('passport-anonymous').Strategy;
-
 const router = express.Router();
 const productRepository = AppDataSource.getRepository(Product);
 const customerRepository = AppDataSource.getRepository(Customer);
@@ -23,6 +23,239 @@ const voucherRepository = AppDataSource.getRepository(Voucher);
 passport.use('jwt', passportSocketVerifyToken);
 passport.use('admin', passportConfigAdmin);
 passport.use(new AnonymousStrategy());
+
+var accessKey = 'F8BBA842ECF85';
+var secretKey = 'K951B6PE1waDMi640xX08PD3vg6EkVlz';
+var orderInfo = 'thanh toán với ví MoMo';
+var partnerCode = 'MOMO';
+var redirectUrl = 'http://localhost:4000/profile/order';
+var ipnUrl = 'https://78bd-2402-800-6279-54a1-d17-a5d3-38b3-9226.ngrok-free.app/orders/callback';
+var requestType = 'payWithMethod';
+const crypto = require('crypto');
+router.post('/momo-payment', async (req: any, res: Response) => {
+  const {
+    firstName,
+    lastName,
+    phoneNumber,
+    email,
+    shippedDate,
+    status,
+    description,
+    shippingAddress,
+    shippingCity,
+    paymentType,
+    customerId,
+    employeeId,
+    orderDetails,
+    voucherCode,
+    voucherId,
+  } = req.body;
+
+  let order: Partial<Order> = {
+    shippedDate,
+    status,
+    description,
+    shippingAddress,
+    shippingCity,
+    paymentType,
+    customerId,
+    employeeId,
+    voucherId,
+  };
+
+  let percentage = 0;
+  try {
+    if (email) {
+      let customer: any = await customerRepository.findOne({ where: { email } });
+      if (customer.roleCode === 'R3' || customer.roleCode === 'R1') {
+        order.employeeId = customer.id;
+      } else {
+        order.customerId = customer.id;
+      }
+    } else {
+      // Anonymous order - Ensure necessary customer information is provided
+      if (!phoneNumber || !email || !firstName) {
+        return res.status(400).json({ message: 'Vui lòng cung cấp thông tin khách hàng' });
+      }
+      let customer = await customerRepository.findOne({ where: { email } });
+      if (customer) {
+        return res.status(400).json({ message: 'Email đã tồn tại, vui lòng dùng email khác hoặc đăng nhập để mua hàng' });
+      } else {
+        customer = await customerRepository.save({ phoneNumber, email, firstName, lastName });
+        order.customerId = customer.id;
+      }
+    }
+
+    if (voucherCode) {
+      const voucher = await voucherRepository.findOne({ where: { voucherCode } });
+      if (!voucher) {
+        return res.status(400).json({ message: 'Voucher không hợp lệ' });
+      }
+      order.voucherId = voucher.id;
+      percentage = voucher.discountPercentage;
+    }
+
+    let totalAmount = 0;
+
+    for (const od of orderDetails) {
+      const product = await productRepository.findOne({ where: { id: od.productId } });
+      if (!product) {
+        return res.status(400).json({ message: 'Sản phẩm không tồn tại' });
+      }
+      if (product.price !== od.price || product.discount !== od.discount) {
+        return res.status(400).json({ message: 'Giá của sản phẩm đã thay đổi, vui lòng thử lại' });
+      }
+      if (product.stock < od.quantity) {
+        return res.status(400).json({ message: 'Số lượng sản phẩm không đủ' });
+      }
+      product.stock -= od.quantity;
+      await productRepository.save(product);
+      totalAmount += (product.price * od.quantity * (100 - product.discount)) / 100;
+    }
+
+    const newOrder = orderRepository.create(order);
+    const savedOrder = await orderRepository.save(newOrder);
+
+    if (orderDetails && orderDetails.length > 0) {
+      const orderDetailEntities = orderDetails.map((od: any) => {
+        return orderDetailRepository.create({
+          ...od,
+          order: savedOrder,
+        });
+      });
+
+      await orderDetailRepository.save(orderDetailEntities);
+    }
+
+    let amount = totalAmount;
+
+    // Áp dụng giảm giá voucher (nếu có)
+    if (percentage) {
+      amount = (amount * (100 - percentage)) / 100;
+    }
+    const orderId = `${savedOrder.id}` + new Date().getTime();
+    const requestId = orderId;
+    const extraData = '';
+    const orderGroupId = '';
+    const autoCapture = true;
+    const lang = 'vi';
+    const rawSignature =
+      'accessKey=' +
+      accessKey +
+      '&amount=' +
+      amount +
+      '&extraData=' +
+      extraData +
+      '&ipnUrl=' +
+      ipnUrl +
+      '&orderId=' +
+      orderId +
+      '&orderInfo=' +
+      orderInfo +
+      '&partnerCode=' +
+      partnerCode +
+      '&redirectUrl=' +
+      redirectUrl +
+      '&requestId=' +
+      requestId +
+      '&requestType=' +
+      requestType;
+
+    const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+
+    const requestBody = JSON.stringify({
+      partnerCode: partnerCode,
+      partnerName: 'Test',
+      storeId: 'MomoTestStore',
+      requestId: requestId,
+      amount: amount,
+      orderId: orderId,
+      orderInfo: orderInfo,
+      redirectUrl: redirectUrl,
+      ipnUrl: ipnUrl,
+      lang: lang,
+      requestType: requestType,
+      autoCapture: autoCapture,
+      extraData: extraData,
+      orderGroupId: orderGroupId,
+      signature: signature,
+    });
+
+    const options = {
+      method: 'POST',
+      url: 'https://test-payment.momo.vn/v2/gateway/api/create',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(requestBody),
+      },
+      data: requestBody,
+    };
+
+    let result;
+    try {
+      result = await axios(options);
+      return res.status(200).json(result.data);
+    } catch (error) {
+      return res.status(500).json({
+        statusCode: 500,
+        message: 'Server error',
+      });
+    }
+  } catch (error) {
+    console.log('««««« error »»»»»', error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi khi tạo đơn hàng mới.' });
+  }
+});
+
+router.post('/callback', async (req: Request, res: Response) => {
+  const { resultCode, orderId } = req.body;
+
+  if (resultCode === 0) {
+    try {
+      const order = await orderRepository.findOne({ where: { id: orderId.substring(0, 2) } });
+      if (order) {
+        order.status = 'COMPLETED';
+        await orderRepository.save(order);
+        return res.status(200).json({ message: 'Order status updated to complete.' });
+      } else {
+        return res.status(400).json({ message: 'Order not found.' });
+      }
+    } catch (error) {
+      console.log('««««« error »»»»»', error);
+      return res.status(500).json({ message: 'Error updating order status.' });
+    }
+  } else {
+    return res.status(400).json({ message: 'Payment not successful.' });
+  }
+});
+
+router.post('/transaction-status', async (req, res) => {
+  const { orderId } = req.body;
+
+  const rawSignature = `accessKey=${accessKey}&orderId=${orderId}&partnerCode=MOMO&requestId=${orderId}`;
+
+  const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+
+  const requestBody = JSON.stringify({
+    partnerCode: 'MOMO',
+    requestId: orderId,
+    orderId: orderId,
+    signature: signature,
+    lang: 'vi',
+  });
+
+  const options = {
+    method: 'POST',
+    url: 'https://test-payment.momo.vn/v2/gateway/api/query',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: requestBody,
+  };
+
+  let result = await axios(options);
+  return res.status(200).json(result.data);
+});
 // Search orders based on a keyword (product name or order ID)
 router.get('/search', async (req: Request, res: Response) => {
   const { keyword } = req.query;
@@ -225,6 +458,7 @@ router.get('/:id', passport.authenticate('jwt', { session: false }), async (req:
   }
 });
 
+// create order
 router.post('/', passport.authenticate(['jwt', 'anonymous'], { session: false }), async (req: any, res: Response) => {
   const {
     firstName,
@@ -244,23 +478,47 @@ router.post('/', passport.authenticate(['jwt', 'anonymous'], { session: false })
     voucherId,
   } = req.body;
 
-  let order: Partial<Order> = {
-    shippedDate,
-    status,
-    description,
-    shippingAddress,
-    shippingCity,
-    paymentType,
-    customerId,
-    employeeId,
-    voucherId,
-  };
-  if (req.user?.roles === ('R3' || 'R1')) {
-    order.employeeId = req.user.id;
-  } else {
-    order.customerId = req.user.id;
-  }
   try {
+    // 1. Kiểm tra số lượng tồn kho của tất cả sản phẩm trong đơn hàng
+    for (const od of orderDetails) {
+      const product = await productRepository.findOne({ where: { id: od.productId } });
+      if (!product) {
+        return res.status(400).json({ message: 'Sản phẩm không tồn tại' });
+      }
+      if (product.stock < od.quantity) {
+        return res.status(400).json({ message: 'Số lượng sản phẩm không đủ' });
+      }
+    }
+
+    // 2. Tạo đơn hàng mới với trạng thái
+    let order: Partial<Order> = {
+      shippedDate,
+      status,
+      description,
+      shippingAddress,
+      shippingCity,
+      paymentType,
+      customerId,
+      employeeId,
+      voucherId,
+    };
+
+    if (customerId) {
+      let customer: any = await customerRepository.findOne({ where: { id: customerId } });
+      if (customer.roleCode === 'R3' || customer.roleCode === 'R1') {
+        order.employeeId = customer.id;
+      } else {
+        order.customerId = customer.id;
+      }
+    } else {
+      let customer = await customerRepository.findOne({ where: { email } });
+      if (customer) {
+        return res.status(400).json({ message: 'Email đã tồn tại, vui lòng dùng email khác hoặc đăng nhập để mua hàng' });
+      } else {
+        customer = await customerRepository.save({ phoneNumber, email, firstName, lastName });
+        order.customerId = customer.id;
+      }
+    }
     if (voucherCode) {
       const voucher = await voucherRepository.findOne({ where: { voucherCode } });
       if (!voucher) {
@@ -268,58 +526,33 @@ router.post('/', passport.authenticate(['jwt', 'anonymous'], { session: false })
       }
       order.voucherId = voucher.id;
     }
-    for (const od of orderDetails) {
-      const product = await productRepository.findOne({ where: { id: od.productId } });
-      if (!product) {
-        return res.status(400).json({ message: 'Sản phẩm không tồn tại' });
-      }
-      if (product.price !== od.price || product.discount !== od.discount) {
-        return res.status(400).json({ message: 'Giá của sản phẩm đã thay đổi, vui lòng thử lại' });
-      }
-      if (product.stock < od.quantity) {
-        return res.status(400).json({ message: 'Số lượng sản phẩm không đủ' });
-      }
-      product.stock -= od.quantity;
-      await productRepository.save(product);
-    }
-
-    if (!order.customerId) {
-      if (!phoneNumber || !email || !firstName) {
-        return res.status(400).json({ message: 'Vui lòng cung cấp thông tin khách hàng' });
-      }
-      let customer = await customerRepository.findOne({ where: { email } });
-      if (customer) {
-        if (customer.password) {
-          return res.status(400).json({ message: 'Email đã tồn tại, vui lòng dùng email khác hoặc đăng nhập để mua hàng' });
-        }
-        order.customerId = customer.id;
-      } else {
-        customer = await customerRepository.save({ phoneNumber, email, firstName, lastName });
-        order.customerId = customer.id;
-      }
-    }
 
     const newOrder = orderRepository.create(order);
     const savedOrder = await orderRepository.save(newOrder);
 
-    if (orderDetails && orderDetails.length > 0) {
-      const orderDetailEntities = orderDetails.map((od: any) => {
-        return orderDetailRepository.create({
-          ...od,
-          order: savedOrder,
-        });
+    // 3. Tạo và lưu các chi tiết đơn hàng
+    const orderDetailEntities = orderDetails.map((od: any) => {
+      return orderDetailRepository.create({
+        ...od,
+        order: savedOrder,
       });
+    });
+    const savedOrderDetails = await orderDetailRepository.save(orderDetailEntities);
+    savedOrder.orderDetails = savedOrderDetails;
 
-      const savedOrderDetails = await orderDetailRepository.save(orderDetailEntities);
-      savedOrder.orderDetails = savedOrderDetails;
+    // 4. Cập nhật số lượng tồn kho của sản phẩm
+    for (const od of savedOrderDetails) {
+      const product: any = await productRepository.findOneBy({ id: od.productId });
+      product.stock -= od.quantity;
+      await productRepository.save(product);
     }
+
     res.status(201).json(savedOrder);
   } catch (error) {
     console.log('««««« error »»»»»', error);
     res.status(500).json({ message: 'Đã xảy ra lỗi khi tạo đơn hàng mới.' });
   }
 });
-
 // GET /orders/user/:userId
 router.get('/user/:userId', passport.authenticate('jwt', { session: false }), async (req: any, res: Response) => {
   const userId = parseInt(req.params.userId, 10);
@@ -344,7 +577,7 @@ router.get('/user/:userId', passport.authenticate('jwt', { session: false }), as
     res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy danh sách đơn hàng.' });
   }
 });
-// update status
+// update
 router.patch('/:orderId', async (req: Request, res: Response) => {
   const orderId = parseInt(req.params.orderId, 10);
   const { shippedDate, status, description, shippingAddress, shippingCity, paymentType, customerId, employeeId, orderDetails } = req.body;
@@ -392,6 +625,45 @@ router.patch('/:orderId', async (req: Request, res: Response) => {
     res.status(200).json(updatedOrder);
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to update order' });
+  }
+});
+// PATCH /orders/:orderId/cancel
+router.patch('/:orderId/cancel', passport.authenticate('jwt', { session: false }), async (req: any, res: Response) => {
+  const orderId = parseInt(req.params.orderId, 10);
+  const customerId = req.user.id;
+
+  try {
+    // Tìm đơn hàng theo orderId
+    const order = await orderRepository.findOne({
+      where: { id: orderId, customerId },
+      relations: ['orderDetails', 'orderDetails.product'],
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Đơn hàng không tồn tại.' });
+    }
+
+    // Kiểm tra xem đơn hàng đã được giao chưa
+    if (order.status === 'COMPLETED' || order.status === 'DELIVERING') {
+      return res.status(400).json({ message: 'Không thể hủy đơn hàng đã được hoặc đang giao.' });
+    }
+
+    // Cập nhật trạng thái đơn hàng và hoàn tồn kho cho sản phẩm
+    order.status = 'CANCELLED';
+    for (const orderDetail of order.orderDetails) {
+      const product = await productRepository.findOne({ where: { id: orderDetail.productId } });
+      if (product) {
+        product.stock += orderDetail.quantity;
+        await productRepository.save(product);
+      }
+    }
+
+    await orderRepository.save(order);
+
+    res.status(200).json({ message: 'Đơn hàng đã được hủy thành công.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi khi hủy đơn hàng.' });
   }
 });
 // DELETE /orders/:orderId

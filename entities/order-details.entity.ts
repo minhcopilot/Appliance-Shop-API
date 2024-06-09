@@ -1,11 +1,14 @@
 import { IsNotEmpty, Max, Min } from 'class-validator';
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Order } from './order.entity';
 import { Product } from './product.entity';
 
 @Entity({ name: 'OrderDetails' })
 export class OrderDetail {
-  @PrimaryColumn({ type: 'int' })
+  @PrimaryGeneratedColumn({ name: 'Id', type: 'int' })
+  id: number;
+
+  @Column({ type: 'int' })
   productId: number;
 
   @Column({ name: 'Quantity', type: 'int', default: 0 })
@@ -17,13 +20,15 @@ export class OrderDetail {
   price: number;
 
   @Column({ name: 'Discount', type: 'int', default: 0 })
-  discount: number;
   @Min(0)
   @Max(90)
+  discount: number;
+
   @ManyToOne(() => Product, (p) => p.orderDetails)
+  @JoinColumn({ name: 'productId' })
   product: Product;
 
   @ManyToOne(() => Order, (o) => o.orderDetails)
-  @JoinColumn({ name: 'orderId' }) // Liên kết orderId với order.id
+  @JoinColumn({ name: 'orderId' })
   order: Order;
 }
