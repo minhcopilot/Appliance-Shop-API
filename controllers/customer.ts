@@ -8,8 +8,34 @@ import JWT from 'jsonwebtoken';
 
 const repository = AppDataSource.getRepository(Customer);
 import sendMail from '../utils/sendMail';
+import axios from 'axios';
 const crypto = require('crypto');
 const asyncHandler = require('express-async-handler');
+
+//Verify Recaptcha
+const verifyRecaptcha = asyncHandler(async (req: any, res: any, next: any) => {
+  const { recaptchaToken } = req.body;
+  if (!recaptchaToken) {
+    return res.status(400).json({ message: 'Recaptcha token is required' });
+  }
+
+  try {
+    const response = await axios.post(`https://www.google.com/recaptcha/api/siteverify`, null, {
+      params: {
+        secret: process.env.RECAPTCHA_SECRET_KEY,
+        response: recaptchaToken,
+      },
+    });
+
+    const { success } = response.data;
+    if (!success) {
+      return res.status(400).json({ message: 'Recaptcha verification failed' });
+    }
+    return next();
+  } catch (error) {
+    return res.status(500).json({ message: 'recaptcha verification error', error: error });
+  }
+});
 
 const login = asyncHandler(async (req: any, res: any, next: any) => {
   try {
@@ -184,4 +210,4 @@ const resetPassword = asyncHandler(async (req: any, res: any) => {
   });
 });
 
-export { forgotPassword, resetPassword, login, register, refreshToken, loginSuccess };
+export { forgotPassword, resetPassword, login, register, refreshToken, loginSuccess, verifyRecaptcha };

@@ -5,17 +5,17 @@ import passport from 'passport';
 
 import passportGG from '../../middlewares/passportGoogle';
 import passportFB from '../../middlewares/passportFB';
-import { forgotPassword, resetPassword, login, register, refreshToken, loginSuccess } from '../../controllers/customer';
+import { forgotPassword, resetPassword, login, register, refreshToken, loginSuccess, verifyRecaptcha } from '../../controllers/customer';
 require('dotenv').config();
 const { passportVerifyAccount } = require('../../middlewares/passport');
 
 passport.use('local', passportVerifyAccount);
 
 //POST login with jwt token
-router.post('/login', passport.authenticate('local', { session: false }), login);
+router.post('/login', verifyRecaptcha, passport.authenticate('local', { session: false }), login);
 
 //POST REGISTER WITH JWT token
-router.post('/register', register);
+router.post('/register', verifyRecaptcha, register);
 //Refresh token
 router.post('/refresh-token', refreshToken);
 
