@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-
 import { AppDataSource } from '../data-source';
 import { Product } from '../entities/product.entity';
 import { allowRoles } from '../middlewares/verifyRoles';
@@ -11,6 +10,27 @@ const router = express.Router();
 
 const repository = AppDataSource.getRepository(Product);
 
+// GET suggestions
+router.get('/suggestions', async (req: Request, res: Response) => {
+  const keyword = req.query.keyword as string;
+
+  if (!keyword) {
+    return res.status(400).json({ error: 'Keyword is required' });
+  }
+
+  try {
+    const suggestions = await repository
+      .createQueryBuilder('product')
+      .where('product.name LIKE :keyword', { keyword: `%${keyword}%` })
+      .select('product.name')
+      .limit(10)
+      .getMany();
+
+    res.json(suggestions.map((product) => product.name));
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch suggestions' });
+  }
+});
 /* GET products */
 router.get('/', async (req: Request, res: Response, next: any) => {
   try {
