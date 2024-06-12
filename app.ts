@@ -4,7 +4,6 @@ import express, { Express, NextFunction, Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import logger from 'morgan';
 import path from 'path';
-
 import { AppDataSource } from './data-source';
 import indexRouter from './routes/routes';
 import adminRoutes from './routes/admin/routes';
@@ -13,6 +12,12 @@ import { articleRouter } from './routes/article/routes';
 import { ChatRouter } from './routes/chat';
 import mongoose from 'mongoose';
 import session from 'express-session';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yaml';
+import fs from 'fs';
+
+const file = fs.readFileSync(path.resolve('./openapi.yaml'), 'utf8');
+const swaggerDocument = YAML.parse(file);
 
 //MongoDB connection with initial retry
 const mongooseConnection = 'mongodb://' + process.env.MONGODB_URL;
@@ -58,7 +63,7 @@ AppDataSource.initialize().then(async () => {
 
   // use cors
   app.use(cors({ origin: true, credentials: true }));
-
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
   app.use('/', indexRouter);
   app.use('/admin', adminRoutes);
   app.use('/user', userRouter);

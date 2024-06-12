@@ -4,9 +4,9 @@ import passport from 'passport';
 
 import { forgotPassword, resetPassword, login, refreshToken, loginSuccess } from '../../controllers/employee';
 require('dotenv').config();
-const { passportConfigLocalAdmin } = require('../../middlewares/passportAdmin');
+const { passportVerifyAccount } = require('../../middlewares/passport');
 
-passport.use('localAdmin', passportConfigLocalAdmin);
+passport.use('localAdmin', passportVerifyAccount);
 
 //POST login with jwt token
 router.post('/login', passport.authenticate('localAdmin', { session: false }), login);

@@ -1,6 +1,5 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { AppDataSource } from '../data-source';
-import { allowRoles } from '../middlewares/verifyRoles';
 import { Customer } from '../entities/customer.entity';
 import * as bcrypt from 'bcrypt';
 import { format } from 'date-fns';
@@ -8,9 +7,13 @@ const router = express.Router();
 const repository = AppDataSource.getRepository(Customer);
 import cloudinary from '../utils/cloudinary';
 import { uploadCloud } from '../middlewares/fileMulter';
+import { allowRoles } from '../middlewares/verifyRoles';
+import { passportVerifyToken } from '../middlewares/passport';
+import passport from 'passport';
+passport.use('jwt', passportVerifyToken);
 
 /* GET customers */
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const customer = await repository.find({
       select: ['id', 'firstName', 'lastName', 'password', 'phoneNumber', 'address', 'photo', 'birthday', 'email', 'roleCode'],
@@ -27,7 +30,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 /* GET customer by id */
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3', 'R2'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const customer = await repository.findOne({
       where: { id: parseInt(req.params.id) },
@@ -44,7 +47,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // POST customer
-router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
     const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
@@ -76,46 +79,52 @@ router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, nex
 });
 
 // PATCH customer
-router.patch('/:id', uploadCloud.single('photo'), async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const customer = await repository.findOneBy({ id: parseInt(req.params.id) });
-    const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
-    const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
+router.patch(
+  '/:id',
+  passport.authenticate('jwt', { session: false }),
+  allowRoles('R1', 'R2', 'R3'),
+  uploadCloud.single('photo'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const customer = await repository.findOneBy({ id: parseInt(req.params.id) });
+      const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
+      const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
 
-    if (!customer) {
-      return res.status(410).json({ message: 'Not found' });
-    }
-
-    const customerCopy: any = { ...customer };
-    if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: 'customers',
-      });
-
-      customerCopy.photo = result.secure_url;
-
-      if (customer.photo) {
-        await cloudinary.uploader.destroy(customer.photo);
+      if (!customer) {
+        return res.status(410).json({ message: 'Not found' });
       }
+
+      const customerCopy: any = { ...customer };
+      if (req.file) {
+        const result = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'customers',
+        });
+
+        customerCopy.photo = result.secure_url;
+
+        if (customer.photo) {
+          await cloudinary.uploader.destroy(customer.photo);
+        }
+      }
+      const updatedCustomer = repository.merge(customerCopy, {
+        firstName,
+        lastName,
+        phoneNumber,
+        address,
+        birthday: new Date(formattedBirthday),
+        email,
+        password: password ? await bcrypt.hash(password, 10) : customer.password,
+      });
+      const savedCustomer = await repository.save(updatedCustomer);
+      const { password: _, ...updatedCustomerData } = savedCustomer || {};
+      return res.status(200).json(updatedCustomerData);
+    } catch (error: any) {
+      console.log('««««« error »»»»»', error);
+      return res.status(500).json({ message: 'Internal server error', errors: error });
     }
-    const updatedCustomer = repository.merge(customerCopy, {
-      firstName,
-      lastName,
-      phoneNumber,
-      address,
-      birthday: new Date(formattedBirthday),
-      email,
-      password: password ? await bcrypt.hash(password, 10) : customer.password,
-    });
-    const savedCustomer = await repository.save(updatedCustomer);
-    const { password: _, ...updatedCustomerData } = savedCustomer || {};
-    return res.status(200).json(updatedCustomerData);
-  } catch (error: any) {
-    console.log('««««« error »»»»»', error);
-    return res.status(500).json({ message: 'Internal server error', errors: error });
-  }
-});
-router.patch('/change-password/:id', async (req: Request, res: Response) => {
+  },
+);
+router.patch('/change-password/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R2', 'R3'), async (req: Request, res: Response) => {
   const { oldPassword, newPassword } = req.body;
   try {
     const user = await repository.findOne({
@@ -146,7 +155,7 @@ router.patch('/change-password/:id', async (req: Request, res: Response) => {
   }
 });
 //Delete customer
-router.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const customer = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!customer) {

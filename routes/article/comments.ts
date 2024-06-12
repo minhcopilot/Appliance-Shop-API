@@ -4,8 +4,8 @@ import { Comment, commentSchema } from '../../entities/comment.model';
 import { allowRoles } from '../../middlewares/verifyRoles';
 import passport from 'passport';
 export const CommentsRouter = express.Router();
-const { passportConfigAdmin } = require('../../middlewares/passportAdmin');
-passport.use('admin', passportConfigAdmin);
+const { passportVerifyToken } = require('../../middlewares/passport');
+passport.use('admin', passportVerifyToken);
 
 // Admin get all comments
 CommentsRouter.get(

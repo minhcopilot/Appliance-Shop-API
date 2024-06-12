@@ -5,8 +5,8 @@ import { Chat } from '../entities/chat.entity';
 import { AppDataSource } from '../data-source';
 import { IsNull } from 'typeorm';
 import { Message } from '../entities/message.model';
-const { passportConfigAdmin } = require('../middlewares/passportAdmin');
-passport.use('admin', passportConfigAdmin);
+const { passportVerifyToken } = require('../middlewares/passport');
+passport.use('admin', passportVerifyToken);
 
 const chatRespository = AppDataSource.getRepository(Chat);
 export const ChatRouter = express.Router();

@@ -1,8 +1,10 @@
 import express, { Express, NextFunction, Request, Response } from 'express';
-
 import { AppDataSource } from '../data-source';
 import { Supplier } from '../entities/supplier.entity';
 import { allowRoles } from '../middlewares/verifyRoles';
+import { passportVerifyToken } from '../middlewares/passport';
+import passport from 'passport';
+passport.use('jwt', passportVerifyToken);
 
 const router = express.Router();
 
@@ -36,7 +38,7 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
 });
 
 /* POST supplier */
-router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
+router.post('/', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
     const { name } = req.body;
     const exitsSupplier = await repository.findOneBy({ name });
@@ -53,7 +55,7 @@ router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, nex
 });
 
 /* PATCH supplier */
-router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
+router.patch('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
     const supplier = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!supplier) {
@@ -71,7 +73,7 @@ router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response,
 });
 
 /* DELETE supplier */
-router.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
+router.delete('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
     const supplier = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!supplier) {

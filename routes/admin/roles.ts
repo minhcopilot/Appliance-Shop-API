@@ -1,11 +1,14 @@
 import express from 'express';
 import { AppDataSource } from '../../data-source';
 import { Role } from '../../entities/role.entity';
-
+import { allowRoles } from '../../middlewares/verifyRoles';
+import { passportVerifyToken } from '../../middlewares/passport';
+import passport from 'passport';
+passport.use('jwt', passportVerifyToken);
 const router = express.Router();
 const repository = AppDataSource.getRepository(Role);
 
-router.get('/', async (req, res) => {
+router.get('/', passport.authenticate('jwt', { session: false }), allowRoles('R1'), async (req, res) => {
   try {
     const roles = await repository.find();
     if (roles.length === 0) {
@@ -23,7 +26,7 @@ router.get('/', async (req, res) => {
     return res.status(500).json({ message: 'Internal server', errors: error });
   }
 });
-router.get('/:id', async (req, res) => {
+router.get('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1'), async (req, res) => {
   try {
     const role = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!role) {
@@ -41,7 +44,7 @@ router.get('/:id', async (req, res) => {
     return res.status(500).json({ message: 'Internal server', errors: error });
   }
 });
-router.post('/', async (req, res) => {
+router.post('/', passport.authenticate('jwt', { session: false }), allowRoles('R1'), async (req, res) => {
   try {
     const { roleCode, value } = req.body;
     const role = await repository.findOne({
@@ -71,7 +74,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1'), async (req, res) => {
   try {
     const role = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!role) {
@@ -94,7 +97,7 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1'), async (req, res) => {
   try {
     const role = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!role) {

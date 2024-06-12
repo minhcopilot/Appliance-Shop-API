@@ -2,8 +2,6 @@ import { Employee } from '../entities/employee.entity';
 import { AppDataSource } from '../data-source';
 import { MoreThan } from 'typeorm';
 import { generateToken, generateRefreshToken } from '../utils/jwtHelper';
-import * as bcrypt from 'bcrypt';
-import { format } from 'date-fns';
 import JWT from 'jsonwebtoken';
 
 const repository = AppDataSource.getRepository(Employee);

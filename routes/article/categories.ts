@@ -7,10 +7,10 @@ import { allowRoles } from '../../middlewares/verifyRoles';
 import passport from 'passport';
 import { uploadCloud } from '../../middlewares/fileMulter';
 import cloudinary from '../../utils/cloudinary';
-const { passportConfigAdmin } = require('../../middlewares/passportAdmin');
+const { passportVerifyToken } = require('../../middlewares/passport');
 export const PostCategoriesRouter = express.Router();
 
-passport.use('admin', passportConfigAdmin);
+passport.use('admin', passportVerifyToken);
 
 //Client get all post categories
 PostCategoriesRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {

@@ -2,7 +2,12 @@ import express, { NextFunction, Request, Response } from 'express';
 
 import { AppDataSource } from '../data-source';
 import { Category } from '../entities/category.entity';
+
 import { allowRoles } from '../middlewares/verifyRoles';
+import { passportVerifyToken } from '../middlewares/passport';
+import passport from 'passport';
+passport.use('jwt', passportVerifyToken);
+
 const router = express.Router();
 const repository = AppDataSource.getRepository(Category);
 
@@ -34,7 +39,7 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
 });
 
 /* POST category */
-router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
+router.post('/', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
     const { name } = req.body;
     const category = await repository.findOneBy({ name });
@@ -56,7 +61,7 @@ router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, nex
 });
 
 /* PATCH category */
-router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
+router.patch('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
     const category = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!category) {
@@ -74,7 +79,7 @@ router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response,
 });
 
 /* DELETE category */
-router.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
+router.delete('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
     const category = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!category) {

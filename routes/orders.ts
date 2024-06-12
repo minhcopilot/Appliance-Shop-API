@@ -9,9 +9,7 @@ import { Product } from '../entities/product.entity';
 import { allowRoles } from '../middlewares/verifyRoles';
 import passport from 'passport';
 import { passportSocketVerifyToken } from '../middlewares/passportSocket';
-import { Brackets, ILike } from 'typeorm';
 import axios from 'axios';
-const { passportConfigAdmin } = require('../middlewares/passportAdmin');
 
 const AnonymousStrategy = require('passport-anonymous').Strategy;
 const router = express.Router();
@@ -21,7 +19,6 @@ const orderRepository = AppDataSource.getRepository(Order);
 const orderDetailRepository = AppDataSource.getRepository(OrderDetail);
 const voucherRepository = AppDataSource.getRepository(Voucher);
 passport.use('jwt', passportSocketVerifyToken);
-passport.use('admin', passportConfigAdmin);
 passport.use(new AnonymousStrategy());
 
 var accessKey = 'F8BBA842ECF85';
@@ -317,7 +314,7 @@ router.get('/search', async (req: Request, res: Response) => {
 });
 
 /* GET orders */
-router.get('/', async (req: Request, res: Response, next: any) => {
+router.get('/', passport.authenticate('jwt', { session: false }), async (req: Request, res: Response, next: any) => {
   try {
     // SELECT * FROM [Products] AS 'product'
     const orders = await orderRepository
@@ -389,7 +386,7 @@ router.get('/customer-orders', async (req: Request, res: Response) => {
   }
 });
 // GET /orders/customer/:customerId
-router.get('/customer/:customerId', async (req: Request, res: Response) => {
+router.get('/customer/:customerId', passport.authenticate('jwt', { session: false }), async (req: Request, res: Response) => {
   const customerId = parseInt(req.params.customerId, 10);
 
   try {
@@ -410,6 +407,8 @@ router.get('/customer/:customerId', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy danh sách đơn hàng.' });
   }
 });
+
+//Get order by id
 router.get('/:id', passport.authenticate('jwt', { session: false }), async (req: any, res: Response, next: any) => {
   try {
     // SELECT * FROM [Products] AS 'product'
@@ -578,7 +577,7 @@ router.get('/user/:userId', passport.authenticate('jwt', { session: false }), as
   }
 });
 // update
-router.patch('/:orderId', async (req: Request, res: Response) => {
+router.patch('/:orderId', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
   const orderId = parseInt(req.params.orderId, 10);
   const { shippedDate, status, description, shippingAddress, shippingCity, paymentType, customerId, employeeId, orderDetails } = req.body;
 
@@ -667,7 +666,7 @@ router.patch('/:orderId/cancel', passport.authenticate('jwt', { session: false }
   }
 });
 // DELETE /orders/:orderId
-router.delete('/:orderId', async (req: Request, res: Response) => {
+router.delete('/:orderId', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response) => {
   const orderId = parseInt(req.params.orderId, 10);
 
   try {

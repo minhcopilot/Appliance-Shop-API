@@ -11,10 +11,10 @@ import cloudinary from '../../utils/cloudinary';
 import { ImageUrl, imageUrl } from '../../entities/postImage.model';
 import { stripContent, stripTags } from '../../utils/striphtmltag';
 import { PostCategory } from '../../entities/post-category.model';
-const { passportConfigAdmin } = require('../../middlewares/passportAdmin');
+const { passportVerifyToken } = require('../../middlewares/passport');
 export const PostsRouter = express.Router();
 
-passport.use('admin', passportConfigAdmin);
+passport.use('admin', passportVerifyToken);
 
 // Client get all post
 PostsRouter.get('/', async (req: any, res: Response, next: NextFunction) => {

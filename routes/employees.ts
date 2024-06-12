@@ -1,14 +1,18 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { AppDataSource } from '../data-source';
-import { allowRoles } from '../middlewares/verifyRoles';
 import { Employee } from '../entities/employee.entity';
 import * as bcrypt from 'bcrypt';
 import { format } from 'date-fns';
+import { allowRoles } from '../middlewares/verifyRoles';
+import { passportVerifyToken } from '../middlewares/passport';
+import passport from 'passport';
+passport.use('jwt', passportVerifyToken);
+
 const router = express.Router();
 const repository = AppDataSource.getRepository(Employee);
 
 /* GET employees */
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const employee = await repository.find({
       select: ['id', 'firstName', 'lastName', 'password', 'phoneNumber', 'address', 'photo', 'birthday', 'email', 'roleCode'],
@@ -25,7 +29,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 /* GET employee by id */
-router.get('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const employee = await repository.findOne({
       where: { id: parseInt(req.params.id) },
@@ -42,7 +46,7 @@ router.get('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, n
 });
 
 // POST employee
-router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
     const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
@@ -74,7 +78,7 @@ router.post('/', allowRoles('R1', 'R3'), async (req: Request, res: Response, nex
 });
 
 // PATCH employee
-router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const employee = await repository.findOneBy({ id: parseInt(req.params.id) });
     const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
@@ -104,7 +108,7 @@ router.patch('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response,
 });
 
 //Delete employee
-router.delete('/:id', allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const employee = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!employee) {

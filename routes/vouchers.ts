@@ -1,12 +1,16 @@
 import express, { Request, Response } from 'express';
 import { AppDataSource } from '../data-source';
 import { Voucher } from '../entities/voucher.entity';
-import { Order } from '../entities/order.entity';
 import { Customer } from '../entities/customer.entity';
-import { allowRoles } from '../middlewares/verifyRoles';
 const router = express.Router();
 const repository = AppDataSource.getRepository(Voucher);
 import { format } from 'date-fns';
+
+import { allowRoles } from '../middlewares/verifyRoles';
+import { passportVerifyToken } from '../middlewares/passport';
+import passport from 'passport';
+passport.use('jwt', passportVerifyToken);
+
 /* GET vouchers */
 router.get('/', async (req: Request, res: Response, next: any) => {
   try {
@@ -36,7 +40,7 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
 });
 
 /* POST voucher */
-router.post('/', async (req: Request, res: Response, next: any) => {
+router.post('/', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
     const { voucherCode, discountPercentage, startDate, expiryDate, maxUsageCount } = req.body;
 
@@ -84,7 +88,7 @@ router.post('/', async (req: Request, res: Response, next: any) => {
 });
 
 /* PATCH voucher */
-router.patch('/:id', async (req: Request, res: Response, next: any) => {
+router.patch('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
     const voucher = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!voucher) {
@@ -109,7 +113,7 @@ router.patch('/:id', async (req: Request, res: Response, next: any) => {
 });
 
 /* DELETE voucher */
-router.delete('/:id', async (req: Request, res: Response, next: any) => {
+router.delete('/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: any) => {
   try {
     const voucher = await repository.findOneBy({ id: parseInt(req.params.id) });
     if (!voucher) {
@@ -165,7 +169,7 @@ router.get('/customer/:customerId', async (req: Request, res: Response, next: an
 });
 
 /* POST voucher for a customer */
-router.post('/customer/:customerId', async (req: Request, res: Response, next: any) => {
+router.post('/customer/:customerId', passport.authenticate('jwt', { session: false }), async (req: Request, res: Response, next: any) => {
   try {
     const customerId = parseInt(req.params.customerId);
     const { voucherCode, discountPercentage, startDate, expiryDate, maxUsageCount } = req.body;
