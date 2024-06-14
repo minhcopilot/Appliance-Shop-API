@@ -10,6 +10,8 @@ import { allowRoles } from '../middlewares/verifyRoles';
 import passport from 'passport';
 import { passportSocketVerifyToken } from '../middlewares/passportSocket';
 import axios from 'axios';
+import moment from 'moment';
+import CryptoJS from 'crypto-js';
 
 const AnonymousStrategy = require('passport-anonymous').Strategy;
 const router = express.Router();
@@ -253,6 +255,197 @@ router.post('/transaction-status', async (req, res) => {
   let result = await axios(options);
   return res.status(200).json(result.data);
 });
+
+const config = {
+  app_id: '2554',
+  key1: 'sdngKKJmqEMzvh5QQcdD2A9XBSKUNaYn',
+  key2: 'trMrHtvjo6myautxDUiAcYsVtaeQ8nhf',
+  endpoint: 'https://sb-openapi.zalopay.vn/v2/create',
+};
+
+router.post('/zalopay-payment', async (req: any, res: Response) => {
+  const {
+    firstName,
+    lastName,
+    phoneNumber,
+    email,
+    shippedDate,
+    status,
+    description,
+    shippingAddress,
+    shippingCity,
+    paymentType,
+    customerId,
+    employeeId,
+    orderDetails,
+    voucherCode,
+    voucherId,
+  } = req.body;
+
+  let order: Partial<Order> = {
+    shippedDate,
+    status,
+    description,
+    shippingAddress,
+    shippingCity,
+    paymentType,
+    customerId,
+    employeeId,
+    voucherId,
+  };
+
+  let percentage = 0;
+  try {
+    if (email) {
+      let customer: any = await customerRepository.findOne({ where: { email } });
+      if (customer.roleCode === 'R3' || customer.roleCode === 'R1') {
+        order.employeeId = customer.id;
+      } else {
+        order.customerId = customer.id;
+      }
+    } else {
+      // Anonymous order - Ensure necessary customer information is provided
+      if (!phoneNumber || !email || !firstName) {
+        return res.status(400).json({ message: 'Vui lòng cung cấp thông tin khách hàng' });
+      }
+      let customer = await customerRepository.findOne({ where: { email } });
+      if (customer) {
+        return res.status(400).json({ message: 'Email đã tồn tại, vui lòng dùng email khác hoặc đăng nhập để mua hàng' });
+      } else {
+        customer = await customerRepository.save({ phoneNumber, email, firstName, lastName });
+        order.customerId = customer.id;
+      }
+    }
+
+    if (voucherCode) {
+      const voucher = await voucherRepository.findOne({ where: { voucherCode } });
+      if (!voucher) {
+        return res.status(400).json({ message: 'Voucher không hợp lệ' });
+      }
+      order.voucherId = voucher.id;
+      percentage = voucher.discountPercentage;
+    }
+
+    let totalAmount = 0;
+
+    for (const od of orderDetails) {
+      const product = await productRepository.findOne({ where: { id: od.productId } });
+      if (!product) {
+        return res.status(400).json({ message: 'Sản phẩm không tồn tại' });
+      }
+      if (product.price !== od.price || product.discount !== od.discount) {
+        return res.status(400).json({ message: 'Giá của sản phẩm đã thay đổi, vui lòng thử lại' });
+      }
+      if (product.stock < od.quantity) {
+        return res.status(400).json({ message: 'Số lượng sản phẩm không đủ' });
+      }
+      product.stock -= od.quantity;
+      await productRepository.save(product);
+      totalAmount += (product.price * od.quantity * (100 - product.discount)) / 100;
+    }
+
+    const newOrder = orderRepository.create(order);
+    const savedOrder = await orderRepository.save(newOrder);
+
+    if (orderDetails && orderDetails.length > 0) {
+      const orderDetailEntities = orderDetails.map((od: any) => {
+        return orderDetailRepository.create({
+          ...od,
+          order: savedOrder,
+        });
+      });
+
+      await orderDetailRepository.save(orderDetailEntities);
+    }
+
+    let amount = totalAmount;
+
+    // Apply voucher discount (if any)
+    if (percentage) {
+      amount = (amount * (100 - percentage)) / 100;
+    }
+
+    const embed_data = {
+      redirecturl: `${process.env.CLIENT_URL}/profile/order`,
+    };
+
+    const items = [{}];
+    const transID = `${savedOrder.id}`;
+    const zalopayOrder: any = {
+      app_id: config.app_id,
+
+      app_trans_id: `${moment().format('YYMMDD')}_${transID}`,
+      app_user: 'user123',
+      app_time: Date.now(),
+      item: JSON.stringify(items),
+      embed_data: JSON.stringify(embed_data),
+      amount: amount,
+      description: `Thanh toán đơn hàng có mã #${transID} Haven Shop`,
+      bank_code: '',
+      callback_url: `${process.env.SERVER_URL}/orders/zalopay-callback`,
+    };
+
+    const data =
+      config.app_id +
+      '|' +
+      zalopayOrder.app_trans_id +
+      '|' +
+      zalopayOrder.app_user +
+      '|' +
+      zalopayOrder.amount +
+      '|' +
+      zalopayOrder.app_time +
+      '|' +
+      zalopayOrder.embed_data +
+      '|' +
+      zalopayOrder.item;
+    zalopayOrder.mac = CryptoJS.HmacSHA256(data, config.key1).toString();
+
+    try {
+      const result = await axios.post(config.endpoint, null, { params: zalopayOrder });
+      return res.status(200).json(result.data);
+    } catch (error) {
+      res.status(500).json({ message: 'Đã xảy ra lỗi khi tạo đơn hàng mới.' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Đã xảy ra lỗi khi tạo đơn hàng mới.' });
+  }
+});
+
+router.post('/zalopay-callback', async (req: Request, res: Response) => {
+  let result: any = {};
+
+  try {
+    let dataStr = req.body.data;
+    let reqMac = req.body.mac;
+
+    let mac = CryptoJS.HmacSHA256(dataStr, config.key2).toString();
+
+    if (reqMac !== mac) {
+      result.return_code = -1;
+      result.return_message = 'mac not equal';
+    } else {
+      let dataJson = JSON.parse(dataStr);
+      const order = await orderRepository.findOne({ where: { id: dataJson['app_trans_id'].split('_')[1] } });
+      if (order) {
+        order.status = 'COMPLETED';
+        await orderRepository.save(order);
+        result.return_code = 1;
+        result.return_message = 'success';
+      } else {
+        result.return_code = -1;
+        result.return_message = 'Order not found';
+      }
+    }
+  } catch (ex: any) {
+    console.log('««««« error »»»»»', ex);
+    result.return_code = 0;
+    result.return_message = ex.message;
+  }
+
+  res.json(result);
+});
+
 // Search orders based on a keyword (product name or order ID)
 router.get('/search', async (req: Request, res: Response) => {
   const { keyword } = req.query;
