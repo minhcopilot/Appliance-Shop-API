@@ -25,6 +25,7 @@ router.get('/google', passportGG.authenticate('google', { scope: ['profile', 'em
 router.get('/google/callback', (req, res, next) => {
   passportGG.authenticate('google', (err: any, profile: Profile) => {
     if (err) {
+      console.log('««««« err »»»»»', err);
       return res.status(500).send('Authentication failed');
     }
     req.user = profile;
