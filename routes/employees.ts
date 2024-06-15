@@ -50,7 +50,7 @@ router.get('/:id', passport.authenticate('jwt', { session: false }), allowRoles(
 router.post('/', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R3'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
-    const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
+    const formattedBirthday = birthday ? format(new Date(birthday), 'yyyy-MM-dd') : format(new Date('1990-01-01'), 'yyyy-MM-dd');
     const employee = await repository.findOneBy({ email: email });
     if (employee) {
       return res.status(400).json({ message: 'Account already exists' });
@@ -84,22 +84,19 @@ router.patch('/:id', passport.authenticate('jwt', { session: false }), allowRole
   try {
     const employee = await repository.findOneBy({ id: parseInt(req.params.id) });
     const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
-    const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
+    const formattedBirthday = birthday ? format(new Date(birthday), 'yyyy-MM-dd') : format(new Date('1990-01-01'), 'yyyy-MM-dd');
     if (!employee) {
       return res.status(410).json({ message: 'Not found' });
     }
-    const hash = await bcrypt.hash(password, 10);
+    // const hash = await bcrypt.hash(password, 10);
     if (employee) {
       employee.firstName = firstName || employee.firstName;
       employee.lastName = lastName || employee.lastName;
       employee.phoneNumber = phoneNumber || employee.phoneNumber;
-      employee.password = password || employee.password;
       employee.address = address || employee.address;
       employee.birthday = new Date(formattedBirthday);
       employee.email = email || employee.email;
-      if (password) {
-        employee.password = hash;
-      }
+      employee.password = password || employee.password;
       const updatedEmployee = await repository.save(employee);
       const { password: _, ...updatedEmployeeData } = updatedEmployee || {};
       return res.status(200).json(updatedEmployeeData);
