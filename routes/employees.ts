@@ -24,6 +24,7 @@ router.get('/', passport.authenticate('jwt', { session: false }), allowRoles('R1
       return res.status(200).json(employee);
     }
   } catch (error: any) {
+    console.log(error);
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
@@ -73,6 +74,7 @@ router.post('/', passport.authenticate('jwt', { session: false }), allowRoles('R
 
     return res.status(200).json(tokenEmployee);
   } catch (error: any) {
+    console.log(error);
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
@@ -103,6 +105,7 @@ router.patch('/:id', passport.authenticate('jwt', { session: false }), allowRole
       return res.status(200).json(updatedEmployeeData);
     }
   } catch (error: any) {
+    console.log(error);
     return res.status(500).json({ message: 'Internal server error', errors: error });
   }
 });
@@ -117,6 +120,7 @@ router.delete('/:id', passport.authenticate('jwt', { session: false }), allowRol
     await repository.delete({ id: parseInt(req.params.id) });
     res.status(200).json({ message: 'Employee deleted successfully' });
   } catch (error) {
+    console.log(error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
