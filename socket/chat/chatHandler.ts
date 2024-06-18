@@ -5,6 +5,7 @@ import { sendMessage } from './sendMessage';
 import { chatClose } from './chatClose';
 import { AppDataSource } from '../../data-source';
 import { Chat } from '../../entities/chat.entity';
+import { customerConnect } from './customerConnect';
 
 export type socketData = {
   type: string;
@@ -37,14 +38,17 @@ export const chatHandler = async (io: Server, socket: any) => {
       console.log('employee sent a message');
       sendMessage(socket, io, data, 'employee');
     }
+    if (data.type === 'close-chat') {
+      console.log('employee closed chat');
+      chatClose(socket, io, data);
+    }
   });
   socket.on('client-message', (data: socketData) => {
     if (data.type === 'start-chat') {
       chatStart(socket, io, data);
     }
     if (data.type === 'customer-connected') {
-      socket.join(data.message.toString());
-      console.log('customer joined room ' + data.message.toString());
+      customerConnect(socket, io, data);
     }
     if (data.type === 'new-message') {
       console.log('client sent a message');
