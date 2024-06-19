@@ -575,11 +575,11 @@ router.get('/payos-callback', async (req: Request, res: Response) => {
       order.status = 'CANCELLED';
       await orderRepository.save(order);
       return res.redirect(`${process.env.CLIENT_URL}/profile/order`);
-    } else if (code === '00' && cancel === 'false' && status !== 'CANCELLED' && orderCode && orderCode !== 'undefined') {
-      return res.redirect(`${process.env.CLIENT_URL}/profile/order`);
     } else {
       return res.status(400).json({ message: 'Order not found.' });
     }
+  } else if (code === '00' && cancel === 'false' && status === 'PAID' && orderCode && orderCode !== 'undefined') {
+    return res.redirect(`${process.env.CLIENT_URL}/profile/order`);
   } else {
     return res.status(400).json({ message: 'Payment not successful.' });
   }
