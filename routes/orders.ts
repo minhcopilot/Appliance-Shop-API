@@ -555,8 +555,8 @@ router.post('/payos-payment', async (req: any, res: Response) => {
       amount: amount,
       description: `Thanh toán đơn hàng ${savedOrder.id}`,
       orderCode: savedOrder.id,
-      returnUrl: `${process.env.CLIENT_URL}/profile/orders`,
-      cancelUrl: `${process.env.SERVER_URL}/orders/cancel-order`,
+      returnUrl: `${process.env.SERVER_URL}/orders/payos-callback`,
+      cancelUrl: `${process.env.SERVER_URL}/orders/payos-callback`,
     };
     const paymentLink = await payos.createPaymentLink(orderPayos);
     res.status(200).json(paymentLink.checkoutUrl);
@@ -566,14 +566,16 @@ router.post('/payos-payment', async (req: any, res: Response) => {
   }
 });
 
-router.get('/cancel-order', async (req: Request, res: Response) => {
-  const { orderCode, status, cancel } = req.query;
+router.get('/payos-callback', async (req: Request, res: Response) => {
+  const { orderCode, status, cancel, code } = req.query;
   const orderId: any = orderCode as string;
   if (cancel && status === 'CANCELLED' && orderCode && orderCode !== 'undefined') {
     const order = await orderRepository.findOne({ where: { id: orderId } });
     if (order) {
       order.status = 'CANCELLED';
       await orderRepository.save(order);
+      return res.redirect(`${process.env.CLIENT_URL}/profile/order`);
+    } else if (code === '00' && cancel === 'false' && status !== 'CANCELLED' && orderCode && orderCode !== 'undefined') {
       return res.redirect(`${process.env.CLIENT_URL}/profile/order`);
     } else {
       return res.status(400).json({ message: 'Order not found.' });
@@ -585,8 +587,6 @@ router.get('/cancel-order', async (req: Request, res: Response) => {
 
 router.post('/receive-hook', async (req: Request, res: Response) => {
   const { code, data } = req.body;
-  console.log('««««« data »»»»»', data.orderCode);
-  console.log('««««« req.body »»»»»', req.body);
   if (code === '00') {
     try {
       const order = await orderRepository.findOne({ where: { id: data.orderCode } });
