@@ -153,7 +153,7 @@ router.patch('/:id', passport.authenticate('jwt', { session: false }), allowRole
     if (!voucher) {
       return res.status(410).json({ message: 'Not found' });
     }
-    const { voucherCode, discountPercentage, startDate, expiryDate, maxUsageCount } = req.body;
+    const { voucherCode, discountPercentage, startDate, expiryDate, maxUsageCount, voucherType } = req.body;
 
     const startDateBirthday = format(new Date(startDate), 'yyyy-MM-dd');
     const expiryDateBirthday = format(new Date(expiryDate), 'yyyy-MM-dd');
@@ -164,6 +164,7 @@ router.patch('/:id', passport.authenticate('jwt', { session: false }), allowRole
       remainingUsageCount: maxUsageCount,
       voucherCode: voucherCode || voucher.voucherCode,
       discountPercentage: discountPercentage || voucher.discountPercentage,
+      voucherType: voucher.voucherType || voucherType,
     });
     res.status(200).json(voucherUpdated);
   } catch (error: any) {
