@@ -6,6 +6,7 @@ import { chatClose } from './chatClose';
 import { AppDataSource } from '../../data-source';
 import { Chat } from '../../entities/chat.entity';
 import { customerConnect } from './customerConnect';
+import { socketVerfiyCaptcha } from '../../middlewares/socket';
 
 export type socketData = {
   type: string;
@@ -15,6 +16,7 @@ export type socketData = {
 const chatRespository = AppDataSource.getRepository(Chat);
 
 export const chatHandler = async (io: Server, socket: any) => {
+  socket.use((packet: any, next: any) => socketVerfiyCaptcha(packet, socket, next));
   socket.on('employee-message', async (data: socketData) => {
     if (socket.request.user?.roleCode !== 'R3' && socket.request.user?.roleCode !== 'R1') {
       return;
