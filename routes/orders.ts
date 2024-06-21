@@ -1,5 +1,4 @@
 import express, { Express, NextFunction, Request, Response } from 'express';
-
 import { AppDataSource } from '../data-source';
 import { OrderDetail } from '../entities/order-details.entity';
 import { Order } from '../entities/order.entity';
@@ -12,6 +11,7 @@ import { passportSocketVerifyToken } from '../middlewares/passportSocket';
 import axios from 'axios';
 import moment from 'moment';
 import CryptoJS from 'crypto-js';
+import PayOS from '@payos/node';
 
 const AnonymousStrategy = require('passport-anonymous').Strategy;
 const router = express.Router();
@@ -20,10 +20,43 @@ const customerRepository = AppDataSource.getRepository(Customer);
 const orderRepository = AppDataSource.getRepository(Order);
 const orderDetailRepository = AppDataSource.getRepository(OrderDetail);
 const voucherRepository = AppDataSource.getRepository(Voucher);
-import PayOS from '@payos/node';
 
 passport.use('jwt', passportSocketVerifyToken);
 passport.use(new AnonymousStrategy());
+
+// get all customer by total order amount
+router.get('/customers-by-order-value', async (req: Request, res: Response) => {
+  try {
+    const customers = await AppDataSource.getRepository(Customer)
+      .createQueryBuilder('customer')
+      .leftJoinAndSelect('customer.orders', 'order')
+      .leftJoinAndSelect('order.orderDetails', 'orderDetail')
+      .leftJoinAndSelect('order.voucher', 'voucher')
+      .select('customer.id', 'customerId')
+      .addSelect('customer.firstName', 'firstName')
+      .addSelect('customer.lastName', 'lastName')
+      .addSelect('customer.phoneNumber', 'phoneNumber')
+      .addSelect('customer.email', 'email')
+      .addSelect('customer.birthday', 'birthday')
+      .addSelect(
+        'SUM(orderDetail.price * orderDetail.quantity * (1 - orderDetail.discount / 100) * (1 - IFNULL(voucher.discountPercentage, 0) / 100))',
+        'totalOrderValue',
+      )
+      .where('order.status = :status', { status: 'COMPLETED' })
+      .groupBy('customer.id')
+      .addGroupBy('customer.firstName')
+      .addGroupBy('customer.lastName')
+      .addGroupBy('customer.phoneNumber')
+      .addGroupBy('customer.email')
+      .addGroupBy('customer.birthday')
+      .orderBy('totalOrderValue', 'DESC')
+      .getRawMany();
+
+    res.json(customers);
+  } catch (error) {
+    res.status(500).json({ message: 'Internal Server Error', error });
+  }
+});
 
 var accessKey = 'F8BBA842ECF85';
 var secretKey = 'K951B6PE1waDMi640xX08PD3vg6EkVlz';
