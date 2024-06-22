@@ -6,7 +6,7 @@ info:
 
     Some useful links:
     - [The Appliance Shop repository](https://github.com/minhcopilot/Appliance-Shop-API)
-    - [The source API definition for the Appliance Shop](https://github.com/minhcopilot/Appliance-Shop-API/openopenapi.yaml)
+    - [The source API definition for the Appliance Shop](https://github.com/minhcopilot/Appliance-Shop-API/blob/main/openapi.yaml)
 
   contact:
     email: phanminh190502@gmail.com
