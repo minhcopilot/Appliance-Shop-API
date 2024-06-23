@@ -58,10 +58,17 @@ const register = asyncHandler(async (req: any, res: any) => {
   try {
     const { firstName, lastName, phoneNumber, address, birthday, email, password } = req.body;
     // const formattedBirthday = format(new Date(birthday), 'yyyy-MM-dd');
-    const customer = await repository.findOneBy({ email: email });
-    if (customer) {
-      return res.status(400).json({ message: 'Account already exists' });
+
+    const existingCustomerByEmail = await repository.findOneBy({ email: email });
+    if (existingCustomerByEmail) {
+      return res.status(400).json({ message: 'Account with this email already exists' });
     }
+
+    const existingCustomerByPhone = await repository.findOneBy({ phoneNumber: phoneNumber });
+    if (existingCustomerByPhone) {
+      return res.status(409).json({ message: 'Account with this phone number already exists' });
+    }
+
     const hash = await bcrypt.hash(password, 10);
 
     const newCustomer = {

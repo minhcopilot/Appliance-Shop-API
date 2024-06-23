@@ -94,6 +94,18 @@ router.patch(
         return res.status(410).json({ message: 'Not found' });
       }
 
+      // Kiểm tra trùng số điện thoại
+      const phoneNumberExists = await repository.findOneBy({ phoneNumber });
+      if (phoneNumberExists && phoneNumberExists.id !== customer.id) {
+        return res.status(409).json({ message: 'Phone number already in use' });
+      }
+
+      // Kiểm tra trùng email
+      const emailExists = await repository.findOneBy({ email });
+      if (emailExists && emailExists.id !== customer.id) {
+        return res.status(400).json({ message: 'Email already in use' });
+      }
+
       const customerCopy: any = { ...customer };
       if (req.file) {
         const result = await cloudinary.uploader.upload(req.file.path, {
@@ -106,6 +118,7 @@ router.patch(
           await cloudinary.uploader.destroy(customer.photo);
         }
       }
+
       const updatedCustomer = repository.merge(customerCopy, {
         firstName,
         lastName,
@@ -124,6 +137,7 @@ router.patch(
     }
   },
 );
+
 router.patch('/change-password/:id', passport.authenticate('jwt', { session: false }), allowRoles('R1', 'R2', 'R3'), async (req: Request, res: Response) => {
   const { oldPassword, newPassword } = req.body;
   try {
