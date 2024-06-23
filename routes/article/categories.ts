@@ -8,6 +8,7 @@ import passport from 'passport';
 import { uploadCloud } from '../../middlewares/fileMulter';
 import cloudinary from '../../utils/cloudinary';
 import { ObjectId } from 'mongodb';
+import axios from 'axios';
 const { passportVerifyToken } = require('../../middlewares/passport');
 export const PostCategoriesRouter = express.Router();
 
@@ -149,6 +150,7 @@ PostCategoriesRouter.post(
           // if (file) {
           //   let found = await fileUpload(result._id, req, res, PostCategory);
           // }
+          process.env.CLIENT_URL && (await axios.get(process.env.CLIENT_URL + '/api/revalidate/?path=/blog/categories/[url]&type=layout'));
           return res.status(201).json(result);
         } catch (error) {
           console.log(error);
@@ -218,6 +220,7 @@ PostCategoriesRouter.patch('/all/:id', passport.authenticate('admin', { session:
       }
       req.body.title && !req.body.url && (dataInsert.url = urlGenerate(req.body.title));
       await idData.updateOne(dataInsert);
+      process.env.CLIENT_URL && (await axios.get(process.env.CLIENT_URL + '/api/revalidate/?path=/blog/categories/[url]&type=layout'));
       return res.json({ message: 'Post Category updated successfully' });
     } catch (error) {
       console.log(error);

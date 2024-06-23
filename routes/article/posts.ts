@@ -12,6 +12,8 @@ import { ImageUrl, imageUrl } from '../../entities/postImage.model';
 import { stripContent, stripTags } from '../../utils/striphtmltag';
 import { PostCategory } from '../../entities/post-category.model';
 import { verifyRecaptcha } from '../../controllers/customer';
+import axios from 'axios';
+import { Message } from '../../entities/message.model';
 const { passportVerifyToken } = require('../../middlewares/passport');
 export const PostsRouter = express.Router();
 
@@ -362,10 +364,25 @@ PostsRouter.post(
         const newItem = new Post(dataInsert);
         try {
           let result = await newItem.save();
+          if (process.env.CLIENT_URL) {
+            let category = await PostCategory.findById(result.postCategoryId);
+            const authorValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog/author/${result.authorId}&type=layout`);
+            const categoryValidate = async () => {
+              category &&
+                process.env.CLIENT_URL &&
+                (await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog/category/${category.url}&type=layout`));
+            };
+            const blogValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog&type=page`);
+            const blogPageValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog/page/[page]&type=page`);
+            const homeValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/&type=page`);
+            const promises = [authorValidate, categoryValidate, blogValidate, blogPageValidate];
+            category?.url === 'khuyen-mai' && promises.push(homeValidate);
+            result.status === 'published' && (await Promise.allSettled(promises));
+          }
           return res.status(201).json(result);
-        } catch (error) {
+        } catch (error: any) {
           console.log(error);
-          return res.status(500).json({ message: 'Database Error' });
+          return res.status(500).json({ message: error.message || 'Database Error' });
         }
       } catch (error) {
         console.log(error);
@@ -383,9 +400,25 @@ PostsRouter.delete('/all/:url', passport.authenticate('admin', { session: false 
   const url = req.params.url;
   try {
     let idData = await Post.findOneAndDelete({ $or: [{ _id: url }, { url: url }] });
-    idData ? res.json({ message: 'Post Post deleted successfully' }) : res.status(404).json({ message: `Couldn't find that Post Post` });
-  } catch (error) {
-    res.status(500).json({ message: 'Database Error' });
+    if (idData) {
+      if (process.env.CLIENT_URL) {
+        let category = await PostCategory.findById(idData.postCategoryId);
+        const authorValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog/author/${idData.authorId}&type=layout`);
+        const categoryValidate = async () => {
+          category && process.env.CLIENT_URL && (await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog/category/${category.url}&type=layout`));
+        };
+        const blogValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog&type=page`);
+        const blogPageValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog/page/[page]&type=page`);
+        const homeValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/&type=page`);
+        const promises = [authorValidate, categoryValidate, blogValidate, blogPageValidate];
+        category?.url === 'khuyen-mai' && promises.push(homeValidate);
+        idData.status === 'published' && (await Promise.allSettled(promises));
+      }
+      return res.json({ message: 'Post Post deleted successfully' });
+    } else res.status(404).json({ message: `Couldn't find that Post Post` });
+  } catch (error: any) {
+    console.log(error);
+    res.status(500).json({ message: error.message || 'Database Error' });
   }
 });
 
@@ -434,6 +467,22 @@ PostsRouter.patch(
         }
         req.body.title && !req.body.url && (dataInsert.url = urlGenerate(req.body.title));
         await idData.updateOne(dataInsert);
+        if (process.env.CLIENT_URL) {
+          let category = await PostCategory.findById(idData.postCategoryId);
+          const authorValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog/author/${idData.authorId}&type=layout`);
+          const categoryValidate = async () => {
+            category &&
+              process.env.CLIENT_URL &&
+              (await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog/category/${category.url}&type=layout`));
+          };
+          const blogValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog&type=page`);
+          const blogPageValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog/page/[page]&type=page`);
+          const postValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog/${idData.url}&type=page`);
+          const homeValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/&type=page`);
+          const promises = [authorValidate, categoryValidate, blogValidate, blogPageValidate];
+          category?.url === 'khuyen-mai' && promises.push(homeValidate);
+          idData.status === 'published' && (await Promise.allSettled(promises));
+        }
         return res.json({ message: 'Post Category updated successfully' });
       } catch (error) {
         console.log(error);

@@ -8,6 +8,7 @@ import cloudinary from '../utils/cloudinary';
 import { allowRoles } from '../middlewares/verifyRoles';
 import { passportVerifyToken } from '../middlewares/passport';
 import passport from 'passport';
+import axios from 'axios';
 passport.use('jwt', passportVerifyToken);
 const router = express.Router();
 
@@ -181,6 +182,12 @@ router.post(
         imageUrls: JSON.stringify(dataInsert), // Chuyển đổi mảng đối tượng thành chuỗi JSON
       };
       await repository.save(newRecord);
+      if (process.env.CLIENT_URL) {
+        const productValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/products/${newRecord.id}&type=page`);
+        const productsPageValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/products&type=page`);
+        const homeValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/&type=page`);
+        await Promise.allSettled([productsPageValidate, homeValidate, productValidate]);
+      }
       res.status(201).json(newRecord);
     } catch (error: any) {
       console.log('««««« error »»»»»', error);
@@ -257,7 +264,12 @@ router.patch(
         .leftJoinAndSelect('p.supplier', 's')
         .where('p.id = :id', { id: parseInt(req.params.id) })
         .getOne();
-
+      if (process.env.CLIENT_URL) {
+        const productValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/products/${product.id}&type=page`);
+        const productsPageValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/products&type=page`);
+        const homeValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/&type=page`);
+        await Promise.allSettled([productsPageValidate, homeValidate, productValidate]);
+      }
       res.status(200).json(updatedProduct);
     } catch (error: any) {
       console.log(error);
@@ -276,6 +288,11 @@ router.delete('/:id', passport.authenticate('jwt', { session: false }), allowRol
     await repository.delete({
       id: product.id,
     });
+    if (process.env.CLIENT_URL) {
+      const productsPageValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/products&type=page`);
+      const homeValidate = await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/&type=page`);
+      await Promise.allSettled([productsPageValidate, homeValidate]);
+    }
     res.status(200).send({ message: 'Deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ error: 'Internal server error', errors: error });

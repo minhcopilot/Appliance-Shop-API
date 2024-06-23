@@ -3,6 +3,8 @@ import { validateSchemaByField } from '../../utils/validateSchema';
 import { Comment, commentSchema } from '../../entities/comment.model';
 import { allowRoles } from '../../middlewares/verifyRoles';
 import passport from 'passport';
+import axios from 'axios';
+import { Post } from '../../entities/post.model';
 export const CommentsRouter = express.Router();
 const { passportVerifyToken } = require('../../middlewares/passport');
 passport.use('admin', passportVerifyToken);
@@ -68,11 +70,15 @@ CommentsRouter.patch(
     try {
       let idData = await Comment.findByIdAndUpdate(id, req.body);
       if (idData) {
+        let post = await Post.findById(idData.postId);
+        post?.status === 'published' &&
+          process.env.CLIENT_URL &&
+          (await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog/${post.url}&type=page`));
         return res.json({ message: `Comment updated successfully` });
       } else res.status(404).json({ message: `Couldn't find that comment` });
-    } catch (error) {
+    } catch (error: any) {
       console.log(error);
-      res.status(500).json({ message: 'Database Error' });
+      res.status(500).json({ message: error.message || 'Database Error' });
     }
   },
 );
@@ -82,8 +88,13 @@ CommentsRouter.delete('/all/:id', passport.authenticate('admin', { session: fals
   const id = req.params.id;
   try {
     let idData = await Comment.findByIdAndDelete(id);
-    idData ? res.json({ message: 'Comment deleted successfully' }) : res.status(404).json({ message: `Couldn't find that comment` });
-  } catch (error) {
-    res.status(500).json({ message: 'Database Error' });
+    if (idData) {
+      let post = await Post.findById(idData.postId);
+      post?.status === 'published' && process.env.CLIENT_URL && (await axios.get(process.env.CLIENT_URL + `/api/revalidate/?path=/blog/${post.url}&type=page`));
+      return res.json({ message: 'Comment deleted successfully' });
+    } else res.status(404).json({ message: `Couldn't find that comment` });
+  } catch (error: any) {
+    console.log(error);
+    res.status(500).json({ message: error.message || 'Database Error' });
   }
 });
