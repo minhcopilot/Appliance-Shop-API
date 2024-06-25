@@ -9,6 +9,7 @@ import ordersRouter from './orders';
 import productsRouter from './products';
 import suppliersRouter from './suppliers';
 import vouchersRouter from './vouchers';
+import { apiRouter } from './api/router';
 
 passport.use('jwt', passportVerifyToken);
 passport.use('local', passportVerifyAccount);
@@ -24,5 +25,6 @@ router.use('/orders', ordersRouter);
 router.use('/customers', customersRouter);
 router.use('/employees', employeesRouter);
 router.use('/vouchers', vouchersRouter);
+router.use('/api', apiRouter);
 
 export default router;
