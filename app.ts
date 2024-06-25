@@ -16,7 +16,7 @@ import swaggerUi from 'swagger-ui-express';
 import YAML from 'yaml';
 import fs from 'fs';
 import RedisStore from 'connect-redis';
-import redis from 'redis';
+import { createClient } from 'redis';
 
 const file = fs.readFileSync(path.resolve('./openapi.yaml'), 'utf8');
 const swaggerDocument = YAML.parse(file);
@@ -52,6 +52,12 @@ AppDataSource.initialize().then(async () => {
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
   app.use(express.static(path.join(__dirname, 'public')));
+  let redisClient = createClient();
+  redisClient.connect().catch(console.error);
+  let redisStore = new RedisStore({
+    client: redisClient,
+    prefix: 'myapp:',
+  });
 
   // use session
   app.use(
@@ -60,8 +66,7 @@ AppDataSource.initialize().then(async () => {
       resave: true,
       saveUninitialized: true,
       cookie: { maxAge: 24 * 60 * 60 * 1000 },
-      store:
-        process.env.NODE_ENV === 'production' ? new RedisStore({ client: redis.createClient({ url: 'redis://localhost:6379' }) }) : new session.MemoryStore(),
+      store: process.env.NODE_ENV === 'production' ? redisStore : new session.MemoryStore(),
     }),
   );
 
