@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node dist/bin/www.js",
     "dev": "concurrently \"nodemon --config nodemon.json\"",
-    "build": "yarn tsc -p tsconfig.json"
+    "build": "rm -rf dist && yarn tsc -p tsconfig.json"
   },
   "dependencies": {
     "@azure/msal-node": "^2.9.2",
