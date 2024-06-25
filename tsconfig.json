@@ -1,15 +1,48 @@
+// {
+//   "compilerOptions": {
+//     // "types": ["bun-types"],
+//     "moduleResolution": "NodeNext",
+//     // "target": "ES2020",
+//     // "module": "commonjs",
+//     "outDir": "./dist",
+//     "esModuleInterop": true,
+//     "forceConsistentCasingInFileNames": true,
+//     "strict": true,
+//     "skipLibCheck": true,
+//     "experimentalDecorators": true,
+//     "emitDecoratorMetadata": true,
+//     "strictPropertyInitialization": false
+//   },
+//     "include": ["**/*.ts", "**/*.json", ".env"],
+//     "exclude": ["node_modules"]
+// }
+
 {
+  "compileOnSave": false,
   "compilerOptions": {
-    "types": ["bun-types"],
-    "target": "es2016",
-    "module": "commonjs",
-    "outDir": "./dist",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "skipLibCheck": true,
+    "moduleResolution": "Node",
+    "target": "ES2020",
+    "lib": ["ESNext"],
+    "typeRoots": ["node_modules/@types"],
+    "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "strictPropertyInitialization": false
-  }
+    "forceConsistentCasingInFileNames": true,
+    "module": "CommonJS",
+    "pretty": true,
+    "sourceMap": true,
+    "declaration": true,
+    "outDir": "./dist",
+    "allowJs": true,
+    "noEmit": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "importHelpers": true,
+    "baseUrl": "src",
+    "skipLibCheck": true,
+    "paths": {
+      "@/*": ["*"],
+    },  },
+  "include": ["**/*.ts", "**/*.json", ".env"],
+  "exclude": ["node_modules"]
 }

@@ -15,6 +15,8 @@ import session from 'express-session';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yaml';
 import fs from 'fs';
+import RedisStore from 'connect-redis';
+import redis from 'redis';
 
 const file = fs.readFileSync(path.resolve('./openapi.yaml'), 'utf8');
 const swaggerDocument = YAML.parse(file);
@@ -24,7 +26,7 @@ const mongooseConnection = 'mongodb://' + process.env.MONGODB_URL;
 mongoose.connection.on('connected', () => console.log('Connected to ' + mongooseConnection));
 mongoose.connection.on('disconnected', () => console.log('MongoDB lost connection'));
 mongoose.connection.on('error', (error) => console.error('Error in MongoDb connection: ' + error));
-const MongoDBConnect = () => {
+export const MongoDBConnect = () => {
   mongoose
     .connect(mongooseConnection, {
       user: process.env.MONGODB_USER,
@@ -58,6 +60,8 @@ AppDataSource.initialize().then(async () => {
       resave: true,
       saveUninitialized: true,
       cookie: { maxAge: 24 * 60 * 60 * 1000 },
+      store:
+        process.env.NODE_ENV === 'production' ? new RedisStore({ client: redis.createClient({ url: 'redis://localhost:6379' }) }) : new session.MemoryStore(),
     }),
   );
 

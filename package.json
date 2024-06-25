@@ -5,9 +5,9 @@
   "repository": "https://github.com/minhcopilot/Appliance-Shop-API.git",
   "author": "<Team nhom 2>",
   "scripts": {
-    "start": "node ./bin/www.ts",
+    "start": "node dist/bin/www.js",
     "dev": "concurrently \"nodemon --config nodemon.json\"",
-    "build": "npx tsc -p tsconfig.json"
+    "build": "yarn tsc -p tsconfig.json"
   },
   "dependencies": {
     "@azure/msal-node": "^2.9.2",
@@ -22,6 +22,7 @@
     "bcrypt": "^5.1.1",
     "class-validator": "^0.14.0",
     "cloudinary": "^2.2.0",
+    "connect-redis": "^7.1.1",
     "cookie-parser": "~1.4.4",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
@@ -50,6 +51,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
+    "redis": "^4.6.14",
     "reflect-metadata": "^0.1.13",
     "remove-accents": "^0.5.0",
     "socket.io": "^4.7.5",

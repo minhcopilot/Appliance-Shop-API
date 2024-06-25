@@ -13,7 +13,10 @@ export const AppDataSource = new DataSource({
   // port: 1433,
   // username: 'minh5520_SQLLogin_1',
   // database: 'ShopGiaDung',
-  entities: ['entities/**/*.entity{.ts,.js}', 'entities/**/*.schema{.ts,.js}'],
+  entities:
+    process.env.NODE_ENV === 'production'
+      ? ['dist/entities/**/*.entity{.ts,.js}', 'dist/entities/**/*.schema{.ts,.js}']
+      : ['/entities/**/*.entity{.ts,.js}', '/entities/**/*.schema{.ts,.js}'],
   synchronize: true,
   logging: false,
   // options: {
