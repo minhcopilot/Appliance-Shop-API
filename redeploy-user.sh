@@ -13,12 +13,12 @@ elif [ $LOCAL = $BASE ]; then
     echo "User: Rebuilding..."
     /www/server/nodejs/v18.20.0/bin/yarn build
     echo "User: Restarting project"
+    pkill -9 $(cat /www/server/nodejs/vhost/pids/appliance_shop_user.pid)
     pid=`ps aux|grep $(cat /www/server/nodejs/vhost/pids/appliance_shop_user.pid)|grep -v grep|wc -l`
-    echo ${pid}
     if [ "${pid}" == "0" ];then
-        # bash /www/server/nodejs/vhost/scripts/xxx.sh
-        echo "User: ${pid} restarted"
-        else echo "User: Server not started, started"
+        bash /www/server/nodejs/vhost/scripts/appliance_shop_user.sh
+        else echo "User: Project restarted"
+
     fi 
 elif [ $REMOTE = $BASE ]; then
     echo "User: Code on server has been edited, please check again"
