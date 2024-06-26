@@ -14,9 +14,9 @@ export const AppDataSource = new DataSource({
   // username: 'minh5520_SQLLogin_1',
   // database: 'ShopGiaDung',
   entities:
-    process.env.NODE_ENV === 'production'
-      ? ['dist/entities/**/*.entity{.ts,.js}', 'dist/entities/**/*.schema{.ts,.js}']
-      : ['/entities/**/*.entity{.ts,.js}', '/entities/**/*.schema{.ts,.js}'],
+    // process.env.NODE_ENV === 'production'
+    //   ? ['dist/entities/**/*.entity{.ts,.js}', 'dist/entities/**/*.schema{.ts,.js}']
+    ['/entities/**/*.entity{.ts,.js}', '/entities/**/*.schema{.ts,.js}'],
   synchronize: true,
   logging: false,
   // options: {

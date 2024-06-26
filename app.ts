@@ -52,23 +52,26 @@ AppDataSource.initialize().then(async () => {
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
   app.use(express.static(path.join(__dirname, 'public')));
-  let redisClient = createClient();
-  redisClient.connect().catch(console.error);
-  let redisStore = new RedisStore({
-    client: redisClient,
-    prefix: 'myapp:',
-  });
 
   // use session
-  app.use(
-    session({
-      secret: process.env.SECRET || 'secret',
-      resave: true,
-      saveUninitialized: true,
-      cookie: { maxAge: 24 * 60 * 60 * 1000 },
-      store: process.env.NODE_ENV === 'production' ? redisStore : new session.MemoryStore(),
-    }),
-  );
+  const sessionOptions = {
+    secret: process.env.SECRET || 'secret',
+    resave: true,
+    saveUninitialized: true,
+    cookie: { maxAge: 24 * 60 * 60 * 1000 },
+  } as any;
+  if (process.env.NODE_ENV === 'production') {
+    let redisClient = createClient();
+    redisClient.connect().catch(console.error);
+    let redisStore = new RedisStore({
+      client: redisClient,
+      prefix: 'myapp:',
+    });
+    sessionOptions.store = redisStore;
+  } else {
+    sessionOptions.store = new session.MemoryStore();
+  }
+  app.use(session(sessionOptions));
 
   // use cors
   app.use(cors({ origin: process.env.NODE_ENV === 'production' ? /thienvandanang\.com$/ : true, credentials: true }));

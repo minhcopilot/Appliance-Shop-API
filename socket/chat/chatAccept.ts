@@ -17,6 +17,10 @@ export const chatAccept = async (socket: any, io: Server, data: socketData) => {
         type: 'chat-accepted',
         message: { customerName: chat.customerName, id: chat.id, employeeId: socket.request.user.id, phoneNumber: chat.phoneNumber },
       });
+      io.to(chat.id.toString()).emit('server-message', {
+        type: 'chat-accepted',
+        message: { employee: socket.request.user?.lastName + socket.request.user?.firstName },
+      });
       console.log('Chat accepted');
     } else {
       socket.emit('server-message', { type: 'error', message: 'Chat not found' });
