@@ -147,6 +147,31 @@ PostsRouter.get('/:url', async (req: any, res: Response, next: NextFunction) => 
   }
 });
 
+//Client get view
+PostsRouter.get('/:url/view', async (req: any, res: Response, next: NextFunction) => {
+  const url = req.params.url;
+  try {
+    let postData = await Post.findOne({ url, status: 'published' });
+    if (!postData) {
+      return res.status(404).json({ message: `Couldn't find that post` });
+    }
+    //increase view count
+    if (!req.session.views) {
+      req.session.views = {};
+    }
+    console.log(req.session);
+    if (req.session.views[String(postData._id)] !== true) {
+      postData.view += 1;
+      postData.save();
+      req.session.views[String(postData._id)] = true;
+    }
+    res.json({ view: postData.view });
+  } catch (error: any) {
+    console.log(error);
+    res.status(500).json({ message: 'Database Error' });
+  }
+});
+
 //Admin get post by url or id
 PostsRouter.get(
   '/all/:url',
