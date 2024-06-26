@@ -74,7 +74,7 @@ AppDataSource.initialize().then(async () => {
   app.use(session(sessionOptions));
 
   // use cors
-  app.use(cors({ origin: process.env.NODE_ENV === 'production' ? /thienvandanang\.com$/ : true, credentials: true }));
+  app.use(cors({ origin: process.env.NODE_ENV === 'production' ? [/thienvandanang\.com$/, /devlv\.com$/] : true, credentials: true }));
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
   app.use('/', indexRouter);
   app.use('/admin', adminRoutes);
