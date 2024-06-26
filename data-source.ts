@@ -16,7 +16,7 @@ export const AppDataSource = new DataSource({
   entities:
     process.env.NODE_ENV === 'production'
       ? ['dist/entities/**/*.entity{.ts,.js}', 'dist/entities/**/*.schema{.ts,.js}']
-      : ['/entities/**/*.entity{.ts,.js}', '/entities/**/*.schema{.ts,.js}'],
+      : ['entities/**/*.entity{.ts,.js}', 'entities/**/*.schema{.ts,.js}'],
   synchronize: true,
   logging: false,
   // options: {
