@@ -248,7 +248,7 @@ router.post('/callback', async (req: Request, res: Response) => {
     try {
       const order = await orderRepository.findOne({ where: { id: orderId.substring(0, 2) } });
       if (order) {
-        order.status = 'COMPLETED';
+        order.status = 'DELIVERING';
         await orderRepository.save(order);
         return res.status(200).json({ message: 'Order status updated to complete.' });
       } else {
@@ -463,7 +463,7 @@ router.post('/zalopay-callback', async (req: Request, res: Response) => {
       let dataJson = JSON.parse(dataStr);
       const order = await orderRepository.findOne({ where: { id: dataJson['app_trans_id'].split('_')[1] } });
       if (order) {
-        order.status = 'COMPLETED';
+        order.status = 'DELIVERING';
         await orderRepository.save(order);
         result.return_code = 1;
         result.return_message = 'success';
@@ -624,7 +624,7 @@ router.post('/receive-hook', async (req: Request, res: Response) => {
     try {
       const order = await orderRepository.findOne({ where: { id: data.orderCode } });
       if (order) {
-        order.status = 'COMPLETED';
+        order.status = 'DELIVERING';
         await orderRepository.save(order);
         return res.status(200).json({ message: 'Order status updated to complete.' });
       } else {
