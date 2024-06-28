@@ -2,7 +2,6 @@ import axios from 'axios';
 import { exec } from 'child_process';
 import express from 'express';
 import md5 from 'md5';
-import { createHash } from 'node:crypto';
 
 const redployRouter = express.Router();
 
@@ -10,7 +9,7 @@ const redeployData = (projectName: string) => {
   const d = new Date();
   let now_time = d.getTime();
   let p_data = {
-    request_token: md5(now_time + '' + md5(process.env.bt_key)),
+    request_token: md5(now_time + '' + md5(process.env.BT_KEY || '')),
     request_time: now_time,
     data: {
       project_name: projectName,
