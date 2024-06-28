@@ -10,7 +10,7 @@ if [ $LOCAL = $REMOTE ]; then
     echo "Pulling from git..."
     git pull
     echo "Rebuilding..."
-    /www/server/nodejs/v18.20.0/bin/yarn build
+    /www/server/nodejs/v18.20.3/bin/yarn build
     elif [ $REMOTE = $BASE ]; then
     echo "Code on server has been edited, please check again"
 else

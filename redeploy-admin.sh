@@ -7,12 +7,12 @@ BASE=$(git merge-base @ "$UPSTREAM")
 
 if [ $LOCAL = $REMOTE ]; then
     echo "Admin: Up-to-date"
-elif [ $LOCAL = $BASE ]; then
+    elif [ $LOCAL = $BASE ]; then
     echo "Admin: Pulling from git..."
     git pull
     echo "Admin: Rebuilding..."
-    /www/server/nodejs/v18.20.0/bin/yarn build
-elif [ $REMOTE = $BASE ]; then
+    /www/server/nodejs/v18.20.3/bin/yarn build
+    elif [ $REMOTE = $BASE ]; then
     echo "Admin: Code on server has been edited, please check again"
 else
     echo "Admin: Diverged"

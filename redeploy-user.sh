@@ -11,7 +11,7 @@ if [ $LOCAL = $REMOTE ]; then
     echo "User: Pulling from git..."
     git pull
     echo "User: Rebuilding..."
-    /www/server/nodejs/v18.20.0/bin/yarn build
+    /www/server/nodejs/v18.20.3/bin/yarn build
     echo "User: Restarting project"
     
     elif [ $REMOTE = $BASE ]; then
