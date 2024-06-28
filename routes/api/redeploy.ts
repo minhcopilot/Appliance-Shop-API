@@ -20,10 +20,8 @@ const redeployData = (projectName: string) => {
 };
 const nodejsRestartUrl = process.env.RESTART_URL;
 
-const execHandler = async (error: any, stdout: any, stderr: any) => {
-  for await (const data of stdout) {
-    console.log(data);
-  }
+const execHandler = (error: any, stdout: any, stderr: any) => {
+  console.log(stdout);
   if (error || stderr) {
     console.log(error || stderr);
     throw error || stderr;
