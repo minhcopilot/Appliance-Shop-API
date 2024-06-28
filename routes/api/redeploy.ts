@@ -49,55 +49,61 @@ var userRedeploy = async () => {
 };
 console.log('User project restarted');
 
-var adminRedeploy = () => {
-  exec('sh redeploy-admin.sh', execHandler);
+var adminRedeploy = async () => {
+  await exec('sh redeploy-admin.sh', execHandler);
 };
 
 redployRouter.get('/api', async (req: any, res: any, next: any) => {
   try {
-    apiRedeploy();
+    await apiRedeploy();
     return res.json({ message: 'Redploy success' });
   } catch (error: any) {
+    console.log(error);
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 redployRouter.post('/api', async (req: any, res: any, next: any) => {
   try {
-    apiRedeploy();
+    await apiRedeploy();
     return res.json({ message: 'Redploy success' });
   } catch (error: any) {
+    console.log(error);
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 redployRouter.get('/user', async (req: any, res: any, next: any) => {
   try {
-    userRedeploy();
+    await userRedeploy();
     return res.json({ message: 'Redploy success' });
   } catch (error: any) {
+    console.log(error);
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 redployRouter.post('/user', async (req: any, res: any, next: any) => {
   try {
-    userRedeploy();
+    await userRedeploy();
     return res.json({ message: 'Redploy success' });
   } catch (error: any) {
+    console.log(error);
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 redployRouter.get('/admin', async (req: any, res: any, next: any) => {
   try {
-    adminRedeploy();
+    await adminRedeploy();
     return res.json({ message: 'Redploy success' });
   } catch (error: any) {
+    console.log(error);
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
 redployRouter.post('/admin', async (req: any, res: any, next: any) => {
   try {
-    adminRedeploy();
+    await adminRedeploy();
     return res.json({ message: 'Redploy success' });
   } catch (error: any) {
+    console.log(error);
     res.status(500).json({ error: 'Internal server error', errors: error });
   }
 });
