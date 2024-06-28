@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node dist/bin/www.js",
     "dev": "concurrently \"nodemon --config nodemon.json\"",
-    "build": "rm -rf dist && yarn tsc -p tsconfig.json && yarn copy-files",
+    "build": "rm -rf dist && yarn && yarn tsc -p tsconfig.json && yarn copy-files",
     "copy-files": "cp -r public *.yaml dist/"
   },
   "dependencies": {
