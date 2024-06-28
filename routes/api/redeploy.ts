@@ -1,11 +1,8 @@
 import axios from 'axios';
 import { exec } from 'child_process';
 import express from 'express';
+import md5 from 'md5';
 import { createHash } from 'node:crypto';
-
-export const md5 = (content: string) => {
-  return createHash('md5').update(content).digest('hex');
-};
 
 const redployRouter = express.Router();
 
@@ -33,7 +30,7 @@ const execHandler = async (error: any, stdout: any, stderr: any) => {
   }
 };
 
-var apiRedeploy = async () => {
+const apiRedeploy = async () => {
   await exec('sh redeploy.sh', execHandler);
   console.log('Restarting api project');
   const result = await axios.post(nodejsRestartUrl, redeployData('appliance_shop_api'));
@@ -41,7 +38,7 @@ var apiRedeploy = async () => {
   console.log('Api project restarted');
 };
 
-var userRedeploy = async () => {
+const userRedeploy = async () => {
   await exec('sh redeploy-user.sh', execHandler);
   console.log('Restarting user project');
   const result = await axios.post(nodejsRestartUrl, redeployData('appliance_shop_user'));
@@ -49,7 +46,7 @@ var userRedeploy = async () => {
 };
 console.log('User project restarted');
 
-var adminRedeploy = async () => {
+const adminRedeploy = async () => {
   await exec('sh redeploy-admin.sh', execHandler);
 };
 
