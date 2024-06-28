@@ -16,7 +16,9 @@ if [ $LOCAL = $REMOTE ]; then
     
     elif [ $REMOTE = $BASE ]; then
     echo "User: Code on server has been edited, please check again"
+    exit 1
 else
     echo "User: Diverged"
+    exit 1
 fi
 

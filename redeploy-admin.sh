@@ -14,7 +14,9 @@ if [ $LOCAL = $REMOTE ]; then
     /www/server/nodejs/v18.20.3/bin/yarn build
     elif [ $REMOTE = $BASE ]; then
     echo "Admin: Code on server has been edited, please check again"
+    exit 1
 else
     echo "Admin: Diverged"
+    exit 1
 fi
 
