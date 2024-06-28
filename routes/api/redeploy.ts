@@ -35,13 +35,19 @@ const execHandler = async (error: any, stdout: any, stderr: any) => {
 
 var apiRedeploy = async () => {
   await exec('sh redeploy.sh', execHandler);
-  axios.post(nodejsRestartUrl, redeployData('appliance_shop_api'));
+  console.log('Restarting api project');
+  const result = await axios.post(nodejsRestartUrl, redeployData('appliance_shop_api'));
+  console.log(result.data);
+  console.log('Api project restarted');
 };
 
 var userRedeploy = async () => {
   await exec('sh redeploy-user.sh', execHandler);
-  axios.post(nodejsRestartUrl, redeployData('appliance_shop_user'));
+  console.log('Restarting user project');
+  const result = await axios.post(nodejsRestartUrl, redeployData('appliance_shop_user'));
+  console.log(result.data);
 };
+console.log('User project restarted');
 
 var adminRedeploy = () => {
   exec('sh redeploy-admin.sh', execHandler);
