@@ -115,3 +115,25 @@ ChatRouter.get(
     }
   },
 );
+
+//Client get chat by id
+ChatRouter.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  const { phoneNumber, name } = req.query;
+  try {
+    if (!phoneNumber || !name) {
+      res.status(400).json({ message: 'Missing required fields' });
+      return;
+    }
+    const chat = await chatRespository.findOne({
+      where: { phoneNumber: phoneNumber.toString(), customerName: decodeURI(name.toString()), id: Number(req.params.id) },
+    });
+    if (chat) {
+      res.json(chat);
+    } else {
+      res.status(404).json({ message: 'Chat not found' });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Database Error' });
+  }
+});

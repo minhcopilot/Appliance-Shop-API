@@ -19,6 +19,9 @@ export class Chat {
   @Column({ type: 'int', nullable: true })
   employeeId: number;
 
+  @Column({ type: 'nvarchar', nullable: true })
+  employeeName: string;
+
   @Column({ name: 'IsFinished', type: 'boolean', default: false })
   isFinished: boolean;
 

@@ -27,7 +27,7 @@ export const chatHandler = async (io: Server, socket: any) => {
       const chatRooms = await chatRespository.find({ where: { employeeId: socket.request.user?.id, isFinished: false } });
       if (chatRooms.length > 0) {
         chatRooms.forEach((chat) => {
-          socket.join(chat.id.toString());
+          !chat.isFinished && socket.join(chat.id.toString());
           console.log(socket.request.user.email + ' joined room ' + chat.id.toString());
         });
       }

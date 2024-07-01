@@ -10,16 +10,22 @@ export const chatAccept = async (socket: any, io: Server, data: socketData) => {
     let chat = await chatRespository.findOneBy({ id: data.message.id });
     if (chat) {
       chat.employeeId = socket.request.user.id;
+      chat.employeeName = socket.request.user?.lastName + ' ' + socket.request.user?.firstName;
       await chatRespository.save(chat);
       socket.join(chat.id.toString());
       console.log(socket.request.user.email + ' joined room ' + chat.id.toString());
       io.to('employees').emit('assigned', {
         type: 'chat-accepted',
-        message: { customerName: chat.customerName, id: chat.id, employeeId: socket.request.user.id, phoneNumber: chat.phoneNumber },
+        message: {
+          customerName: chat.customerName,
+          id: chat.id,
+          phoneNumber: chat.phoneNumber,
+          employeeId: chat.employeeId,
+        },
       });
       io.to(chat.id.toString()).emit('server-message', {
         type: 'chat-accepted',
-        message: { employee: socket.request.user?.lastName + socket.request.user?.firstName },
+        message: { employeeName: socket.request.user?.lastName + ' ' + socket.request.user?.firstName },
       });
       console.log('Chat accepted');
     } else {
